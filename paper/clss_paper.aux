@@ -1,0 +1,125 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{2}{section.1}\protected@file@percent }
+\newlabel{sec:intro}{{1}{2}{Introduction}{section.1}{}}
+\@writefile{toc}{\contentsline {paragraph}{Contributions.}{2}{section*.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {2}Background}{2}{section.2}\protected@file@percent }
+\newlabel{sec:background}{{2}{2}{Background}{section.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}LTX-2.3 Architecture}{2}{subsection.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Streaming Latent Buffer (SLB)}{2}{subsection.2.2}\protected@file@percent }
+\newlabel{eq:renoise}{{1}{3}{Streaming Latent Buffer (SLB)}{equation.2.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Exposure Bias in Streaming Diffusion}{3}{subsection.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}Closed-Loop Streaming Synthesis}{3}{section.3}\protected@file@percent }
+\newlabel{sec:clss}{{3}{3}{Closed-Loop Streaming Synthesis}{section.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Calibrated Context Re-Noising}{3}{subsection.3.1}\protected@file@percent }
+\newlabel{sec:renoise}{{3.1}{3}{Calibrated Context Re-Noising}{subsection.3.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}EMA-Tracked Per-Channel AdaIN}{3}{subsection.3.2}\protected@file@percent }
+\newlabel{sec:adain}{{3.2}{3}{EMA-Tracked Per-Channel AdaIN}{subsection.3.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Frequency-Band Soft Shrinkage}{4}{subsection.3.3}\protected@file@percent }
+\newlabel{sec:shrink}{{3.3}{4}{Frequency-Band Soft Shrinkage}{subsection.3.3}{}}
+\newlabel{eq:gain}{{6}{4}{Frequency-Band Soft Shrinkage}{equation.3.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Dynamic Anchor Bank}{4}{subsection.3.4}\protected@file@percent }
+\newlabel{sec:anchor}{{3.4}{4}{Dynamic Anchor Bank}{subsection.3.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.5}Stability Analysis}{5}{subsection.3.5}\protected@file@percent }
+\newlabel{sec:stability}{{3.5}{5}{Stability Analysis}{subsection.3.5}{}}
+\newlabel{eq:rholoop}{{7}{5}{Stability Analysis}{equation.3.7}{}}
+\@writefile{toc}{\contentsline {paragraph}{Hyperparameter Choices.}{5}{section*.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Per-Chunk Gain Measurement.}{5}{section*.3}\protected@file@percent }
+\newlabel{eq:gslb}{{9}{5}{Per-Chunk Gain Measurement}{equation.3.9}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Algorithm}{6}{section.4}\protected@file@percent }
+\newlabel{sec:algorithm}{{4}{6}{Algorithm}{section.4}{}}
+\@writefile{loa}{\contentsline {algorithm}{\numberline {1}{\ignorespaces CLSS per-chunk generation}}{6}{algorithm.1}\protected@file@percent }
+\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
+\newlabel{alg:clss}{{1}{6}{CLSS per-chunk generation}{algorithm.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}Implementation}{6}{section.5}\protected@file@percent }
+\newlabel{sec:impl}{{5}{6}{Implementation}{section.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Memory Budget for 16\,GB VRAM}{6}{subsection.5.1}\protected@file@percent }
+\newlabel{sec:memory}{{5.1}{6}{Memory Budget for 16\,GB VRAM}{subsection.5.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Two-Stage Pipeline}{7}{subsection.5.2}\protected@file@percent }
+\newlabel{sec:twostage}{{5.2}{7}{Two-Stage Pipeline}{subsection.5.2}{}}
+\@writefile{toc}{\contentsline {paragraph}{Stage 1 (Open-resolution streaming).}{7}{section*.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Stage 2 (Distilled-LoRA refinement).}{7}{section*.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Audio Streaming}{7}{subsection.5.3}\protected@file@percent }
+\newlabel{sec:audio}{{5.3}{7}{Audio Streaming}{subsection.5.3}{}}
+\@writefile{toc}{\contentsline {paragraph}{Soft energy normalisation.}{8}{section*.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Boundary smoothing.}{8}{section*.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}ComfyUI Node Integration}{8}{subsection.5.4}\protected@file@percent }
+\newlabel{sec:nodes}{{5.4}{8}{ComfyUI Node Integration}{subsection.5.4}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}Experiments}{8}{section.6}\protected@file@percent }
+\newlabel{sec:experiments}{{6}{8}{Experiments}{section.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Shared Configuration}{9}{subsection.6.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Shared configuration for both experiments.}}{9}{table.caption.8}\protected@file@percent }
+\newlabel{tab:config}{{1}{9}{Shared configuration for both experiments}{table.caption.8}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Experiment 1: Text-to-Video (T2V)}{9}{subsection.6.2}\protected@file@percent }
+\newlabel{sec:exp_t2v}{{6.2}{9}{Experiment 1: Text-to-Video (T2V)}{subsection.6.2}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.1}Stage 1 Results}{9}{subsubsection.6.2.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces T2V Stage 1 per-chunk metrics. Identity\_sim for chunk 2 nearly equals boundary\_sim because both compare the same pair of frames (anchor at frame 30 vs first frame of chunk 2), confirming SLB and anchor bank agree.}}{9}{table.caption.9}\protected@file@percent }
+\newlabel{tab:s1_metrics}{{2}{9}{T2V Stage 1 per-chunk metrics. Identity\_sim for chunk 2 nearly equals boundary\_sim because both compare the same pair of frames (anchor at frame 30 vs first frame of chunk 2), confirming SLB and anchor bank agree}{table.caption.9}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces T2V Stage 1 AdaIN corrections and band gains. Band 0 is the DC band ($\gamma _0=0$, gain$\equiv 1$).}}{10}{table.caption.10}\protected@file@percent }
+\newlabel{tab:s1_adain}{{3}{10}{T2V Stage 1 AdaIN corrections and band gains. Band 0 is the DC band ($\gamma _0=0$, gain$\equiv 1$)}{table.caption.10}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.2}Stage 2 Results}{10}{subsubsection.6.2.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces T2V Stage 2 per-chunk metrics (5 chunks, $\text  {fpc}=21$). Identity\_sim compares against Stage 2 chunk~1's first frame; the 0.41--0.52 plateau reflects 3 distinct scenes rather than model instability.}}{10}{table.caption.11}\protected@file@percent }
+\newlabel{tab:s2_metrics}{{4}{10}{T2V Stage 2 per-chunk metrics (5 chunks, $\text {fpc}=21$). Identity\_sim compares against Stage 2 chunk~1's first frame; the 0.41--0.52 plateau reflects 3 distinct scenes rather than model instability}{table.caption.11}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.3}Audio Coherence}{11}{subsubsection.6.2.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces T2V within-chunk audio similarity (cosine, three sequential segment pairs).}}{11}{table.caption.12}\protected@file@percent }
+\newlabel{tab:aud_s1}{{5}{11}{T2V within-chunk audio similarity (cosine, three sequential segment pairs)}{table.caption.12}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Experiment 2: Image-to-Video (I2V)}{11}{subsection.6.3}\protected@file@percent }
+\newlabel{sec:exp_i2v}{{6.3}{11}{Experiment 2: Image-to-Video (I2V)}{subsection.6.3}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.3.1}Stage 1 Results}{12}{subsubsection.6.3.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces I2V Stage 1 per-chunk metrics.}}{12}{table.caption.13}\protected@file@percent }
+\newlabel{tab:i2v_s1_metrics}{{6}{12}{I2V Stage 1 per-chunk metrics}{table.caption.13}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces I2V Stage 1 AdaIN corrections and band gains.}}{12}{table.caption.14}\protected@file@percent }
+\newlabel{tab:i2v_s1_adain}{{7}{12}{I2V Stage 1 AdaIN corrections and band gains}{table.caption.14}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.3.2}Stage 2 Results}{13}{subsubsection.6.3.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces I2V Stage 2 per-chunk metrics. Identity\_sim compares against Stage 2 chunk~1's first frame (the guide-image frame); the negative values for chunks 3--5 reflect that those scenes are substantially different from the opening image.}}{13}{table.caption.15}\protected@file@percent }
+\newlabel{tab:i2v_s2_metrics}{{8}{13}{I2V Stage 2 per-chunk metrics. Identity\_sim compares against Stage 2 chunk~1's first frame (the guide-image frame); the negative values for chunks 3--5 reflect that those scenes are substantially different from the opening image}{table.caption.15}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.3.3}Audio Coherence}{14}{subsubsection.6.3.3}\protected@file@percent }
+\newlabel{sec:i2v_audio}{{6.3.3}{14}{Audio Coherence}{subsubsection.6.3.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces I2V within-chunk audio similarity (cosine, three sequential segment pairs).}}{14}{table.caption.16}\protected@file@percent }
+\newlabel{tab:aud_i2v}{{9}{14}{I2V within-chunk audio similarity (cosine, three sequential segment pairs)}{table.caption.16}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.4}Computational Overhead}{15}{subsection.6.4}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {10}{\ignorespaces Wall-clock timing on a 16\,GB GPU (RTX-class, CPU block-streaming). T2V and I2V timings are nearly identical; token counts, not conditioning mode, dominate iteration cost.}}{15}{table.caption.17}\protected@file@percent }
+\newlabel{tab:timing}{{10}{15}{Wall-clock timing on a 16\,GB GPU (RTX-class, CPU block-streaming). T2V and I2V timings are nearly identical; token counts, not conditioning mode, dominate iteration cost}{table.caption.17}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {7}Discussion}{15}{section.7}\protected@file@percent }
+\newlabel{sec:discussion}{{7}{15}{Discussion}{section.7}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.1}Effect of Chunk Length}{15}{subsection.7.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.2}Identity Tracking and the Anchor Bank Fix}{15}{subsection.7.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.3}Audio Coherence and the Role of Visual Context}{16}{subsection.7.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.4}Stability Margin}{16}{subsection.7.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.5}Multi-Scene Prompting and Identity Metrics}{16}{subsection.7.5}\protected@file@percent }
+\citation{henschel2024streamingt2v}
+\citation{kim2024fifo}
+\citation{wang2023gen}
+\citation{bengio2015scheduled}
+\citation{ning2023elucidating}
+\citation{salimans2022progressive}
+\@writefile{toc}{\contentsline {section}{\numberline {8}Limitations}{17}{section.8}\protected@file@percent }
+\newlabel{sec:limitations}{{8}{17}{Limitations}{section.8}{}}
+\@writefile{toc}{\contentsline {paragraph}{Single experimental configuration.}{17}{section*.18}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Stability metrics vs.\ perceptual quality.}{17}{section*.19}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Stability model assumptions.}{17}{section*.20}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Hardware specificity.}{17}{section*.21}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {9}Related Work}{17}{section.9}\protected@file@percent }
+\newlabel{sec:related}{{9}{17}{Related Work}{section.9}{}}
+\@writefile{toc}{\contentsline {paragraph}{Long video generation.}{17}{section*.22}\protected@file@percent }
+\citation{huang2017arbitrary}
+\citation{yang2024fresco}
+\citation{ceylan2023pix2video}
+\bibstyle{plain}
+\@writefile{toc}{\contentsline {paragraph}{Exposure bias in diffusion.}{18}{section*.23}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Statistical normalisation for consistency.}{18}{section*.24}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Frequency-domain video editing.}{18}{section*.25}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {10}Conclusion}{18}{section.10}\protected@file@percent }
+\newlabel{sec:conclusion}{{10}{18}{Conclusion}{section.10}{}}
+\bibcite{henschel2024streamingt2v}{1}
+\bibcite{kim2024fifo}{2}
+\bibcite{wang2023gen}{3}
+\bibcite{bengio2015scheduled}{4}
+\bibcite{ning2023elucidating}{5}
+\bibcite{salimans2022progressive}{6}
+\bibcite{huang2017arbitrary}{7}
+\bibcite{yang2024fresco}{8}
+\bibcite{ceylan2023pix2video}{9}
+\gdef \@abspage@last{19}

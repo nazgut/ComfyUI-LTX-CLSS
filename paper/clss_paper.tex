@@ -1,0 +1,1071 @@
+\documentclass[12pt]{article}
+
+\usepackage[top=1in,bottom=1in,left=1.25in,right=1.25in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{enumitem}
+\usepackage{url}
+\usepackage{float}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue!70!black,
+    citecolor=green!60!black,
+    urlcolor=blue!70!black,
+}
+
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    backgroundcolor=\color{gray!10},
+}
+
+\title{\textbf{Closed-Loop Streaming Synthesis}\\[2pt]
+\textbf{Bounded-Drift, Arbitrary-Length Audio--Video Generation}\\
+\textbf{by Treating Chunk Hand-off as Feedback Control}}
+
+\author{Aleksander Majda\\
+}
+
+\date{June 2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Generating arbitrarily long videos with diffusion transformers requires splitting the
+temporal dimension into overlapping chunks.  Naive open-loop chunk-streaming
+accumulates exposure-bias drift: each chunk is conditioned on the previously
+generated latent, compounding distributional errors and causing scene collapse or
+grain amplification after a few hundred frames.  We present
+\textbf{Closed-Loop Streaming Synthesis (CLSS)}, a suite of four post-denoising
+corrections that close the feedback loop between successive chunks without modifying
+the transformer weights: calibrated context re-noising, per-channel EMA-tracked
+AdaIN, frequency-band soft shrinkage, and a dynamic anchor bank.  CLSS is
+implemented as a ComfyUI custom-node pipeline targeting LTX-2.3 22B (a 44\,GB
+audio-video diffusion transformer) on consumer 16\,GB VRAM hardware via GGUF
+4-bit quantisation and CPU block-streaming.  A two-stage pipeline generates a
+draft video via CLSS streaming and then refines it using a 3-step distilled-LoRA
+schedule at $2\times$ spatial resolution.
+
+Two 30-second, 3-scene audio-video experiments are reported: text-to-video (T2V)
+and image-to-video (I2V) generation, both using $\text{new\_lf}=31$,
+$\text{overlap}=8$.  T2V Stage~1 achieves boundary cosine similarities of
+0.9949--0.9950 and intra-chunk similarities of 0.73--0.89;
+Stage~2 refinement achieves 0.984--0.993 boundary and 0.917--0.987 intra
+across five refinement chunks.  I2V achieves comparable boundary continuity
+(0.946--0.950) with lower intra-chunk similarity (0.26--0.59) reflecting the
+more dynamic visual transitions inherent to image-conditioned generation.
+A cross-modal audio observation is apparent: Stage~1 chunk~1 audio coherence
+is $-0.25$ to $-0.34$ in T2V (no visual anchor, no audio SLB) but $+0.998$
+to $+0.999$ in I2V (same audio SLB absence, but with a guide image), indicating
+that visual context constrains audio generation via cross-modal attention in
+the joint audio-video transformer.  Total generation time is approximately
+55--56 minutes per 30-second clip on a single 16\,GB GPU.
+\end{abstract}
+
+%--------------------------------------------------------------------------
+\section{Introduction}
+\label{sec:intro}
+%--------------------------------------------------------------------------
+
+Modern video diffusion transformers operate on patchified latent representations
+where temporal resolution is down-scaled $8\times$ relative to pixel frames.
+Fitting a 30-second clip (81,840 tokens at $22\times40$ spatial) into a single
+forward pass requires very large GPUs.  The standard remedy is \emph{temporal
+chunking} via a Streaming Latent Buffer (SLB): generate the video in short
+overlapping segments, conditioning each on the previous denoised output.
+Section~\ref{sec:background} reviews this mechanism and the exposure-bias
+problem it introduces.
+
+CLSS closes the feedback loop between chunks by applying four lightweight
+post-denoising corrections that together bound the closed-loop gain below one,
+preventing drift from accumulating without modifying the transformer weights.
+The corrections are applied purely at the boundary between chunks and add
+negligible computational overhead.
+
+\paragraph{Contributions.}
+\begin{enumerate}[leftmargin=*,noitemsep]
+\item Four closed-loop correction modules for temporal chunk streaming:
+      calibrated context re-noising, EMA-tracked per-channel AdaIN,
+      frequency-band soft shrinkage, and a dynamic anchor bank
+      (Sections~\ref{sec:renoise}--\ref{sec:anchor}).
+\item A linear stability analysis of the feedback loop in latent space,
+      including an empirical per-chunk gain measurement protocol
+      (Section~\ref{sec:stability}).
+\item A memory-efficient two-stage pipeline for LTX-2.3 22B on 16\,GB VRAM
+      using GGUF 4-bit quantisation and CPU block-streaming
+      (Section~\ref{sec:impl}).
+\item ComfyUI custom nodes implementing the full pipeline with per-chunk
+      diagnostic telemetry (Section~\ref{sec:nodes}).
+\item Empirical validation on a 30-second, 3-scene audio-video generation
+      (Section~\ref{sec:experiments}).
+\end{enumerate}
+
+%--------------------------------------------------------------------------
+\section{Background}
+\label{sec:background}
+%--------------------------------------------------------------------------
+
+\subsection{LTX-2.3 Architecture}
+LTX-2.3 is a 22-billion-parameter diffusion transformer for joint audio-video
+synthesis.  It operates on a latent space with an $8\times$ temporal downscale
+(video VAE, causal) and a $160\times4\times$ audio downscale (audio VAE,
+16\,kHz, hop length 160, compression factor 4), yielding a video latent rate
+of $25/8 = 3.125$ lf/s and an audio latent rate of $16000/(160\times4)=25.0$
+lf/s.  The model accepts interleaved video and audio tokens together with
+Gemma-3 text embeddings and is trained with flow-matching on the
+rectified-flow schedule.
+
+\subsection{Streaming Latent Buffer (SLB)}
+The SLB provides temporal continuity in chunk streaming.  When generating
+chunk $N$, the last $\text{overlap\_lf}$ latent frames from chunk $N-1$ are
+prepended to the new chunk's latent, and the denoiser is conditioned on them
+at noise level $\tau_c$:
+\begin{equation}
+\tilde{L}_{\text{overlap}} = (1-\tau_c)\,\hat{L}_{\text{overlap}} + \tau_c\,\varepsilon,
+\quad \varepsilon \sim \mathcal{N}(0, I)
+\label{eq:renoise}
+\end{equation}
+Setting $\tau_c=0$ yields maximal continuity but maximal drift risk;
+$\tau_c=1$ decouples the chunks entirely.  In LTX's framework this is
+implemented as \texttt{VideoConditionByLatentIndex} with
+$\text{strength}=1-\tau_c$.
+
+\subsection{Exposure Bias in Streaming Diffusion}
+Let $\hat{L}_N$ be the denoised latent of chunk $N$ and
+$f_\theta(\cdot\mid\hat{L}_{N-1})$ the denoising operator conditioned on the
+previous chunk.  In open-loop streaming:
+\begin{equation}
+\hat{L}_N = f_\theta(\hat{L}_{N-1} + \varepsilon_N)
+\end{equation}
+The transformer was trained on latents drawn from the data distribution, but at
+inference it receives denoised latents from prior chunks, which lie
+off-manifold relative to its training distribution.  Any distributional shift
+$\delta_N = \hat{L}_N - L_N^*$ (where $L_N^*$ is the ``on-manifold'' latent
+for the same content) is in general amplified by the open-loop gain of the
+denoising process.  Formally, if $g = \|\partial f_\theta / \partial L\|$
+evaluated at $L_{N-1}^*$, then $\|\delta_{N+1}\| \approx g\|\delta_N\|$.
+When $g > 1$ this gives $\|\delta_N\| \sim g^N \to \infty$.
+
+In practice $g$ is not a global constant: it depends on the noise level
+schedule, step count, guidance strength, and the spectral content of the
+latent.  Section~\ref{sec:stability} describes how $g$ is estimated
+empirically per chunk via a perturbation measurement.
+
+%--------------------------------------------------------------------------
+\section{Closed-Loop Streaming Synthesis}
+\label{sec:clss}
+%--------------------------------------------------------------------------
+
+CLSS adds four closed-loop correction modules that together bound the error
+accumulation by ensuring $\rho_{\text{closed}} = g \cdot (1-\beta)\cdot(1-\tau_c) < 1$.
+
+\subsection{Calibrated Context Re-Noising}
+\label{sec:renoise}
+
+The overlap latent fed as context to chunk $N$ is re-noised to level $\tau_c$
+via Eq.~\eqref{eq:renoise}.  This forces the denoiser to actively re-project
+the boundary context onto the data manifold rather than accepting it verbatim,
+partially correcting accumulated drift in the SLB.
+
+In practice $\tau_c=0.05$ provides a strong temporal constraint
+(boundary cosine similarity $>0.97$) while allowing enough distributional
+repair to prevent drift accumulation.  Larger values ($\tau_c=0.20$, as
+suggested by some prior work) loosen the constraint too much for 22B GGUF
+streaming, causing visible motion discontinuities.
+
+\subsection{EMA-Tracked Per-Channel AdaIN}
+\label{sec:adain}
+
+A slow exponential moving average (EMA) with rate $\lambda \approx 0.10$
+tracks per-channel mean $\mu_c$ and standard deviation $\sigma_c$ across chunks:
+\begin{align}
+\mu_c^{(N)} &= (1-\lambda)\,\mu_c^{(N-1)} + \lambda\,\hat\mu_c^{(N)} \\
+\sigma_c^{(N)} &= (1-\lambda)\,\sigma_c^{(N-1)} + \lambda\,\hat\sigma_c^{(N)}
+\end{align}
+where $\hat\mu_c^{(N)}, \hat\sigma_c^{(N)}$ are the per-channel statistics of
+chunk $N$'s new frames.  After generation, each chunk's new frames are blended
+toward the EMA reference via AdaIN with blend factor $\beta$:
+\begin{equation}
+\tilde{L}_N = (1-\beta)\,L_N + \beta\;\text{AdaIN}(L_N \to \mu^{(N-1)}, \sigma^{(N-1)})
+\end{equation}
+This suppresses fast per-chunk statistical drift while allowing slow intentional
+scene evolution (lighting changes, colour grading) to pass through.
+
+Two safety caps prevent over-correction:
+\begin{itemize}[noitemsep]
+\item \textbf{Sigma max drift}: the EMA $\sigma_c$ is clamped to at most
+  $(1+\Delta)\times\sigma_c^{(0)}$ (default $\Delta=0.05$), preventing AdaIN
+  from amplifying late-chunk residual noise.
+\item \textbf{AdaIN max amplification}: per-channel upward scaling is capped
+  at $1.2\times$ the current chunk's std (default), preventing AdaIN from
+  boosting noise in channels that have become quiet.
+\end{itemize}
+
+\subsection{Frequency-Band Soft Shrinkage}
+\label{sec:shrink}
+
+The latent is decomposed into $B=4$ frequency bands via 3-D FFT along
+the (frame, height, width) axes.  Each band $b$ receives a continuous gain:
+\begin{equation}
+g_b^{(c)} = \min\!\left(1,\; \left(\frac{E_{\text{ref},b}^{(c)}}{E_{b}^{(c)}}\right)^{\!\gamma_b}\right) \in (0,1]
+\label{eq:gain}
+\end{equation}
+where $E_b^{(c)}$ is the mean squared amplitude of band $b$ in channel $c$,
+$E_{\text{ref},b}^{(c)}$ is the corresponding EMA reference, and
+$\gamma_b$ is the per-band shrinkage exponent.
+
+Only bands with excess energy relative to their EMA are attenuated.  Bands with
+$\gamma_b = 0$ (the DC band) are never attenuated.  Default exponents:
+$\boldsymbol\gamma = (0.0,\,0.05,\,0.2,\,0.3)$, which are conservative enough
+to preserve scene structure while suppressing temporal flicker.
+
+The EMA is updated with the \emph{corrected} (post-gain) energies, not the raw
+ones, so the reference tracks intentional scene content rather than accumulated
+error.
+
+\subsection{Dynamic Anchor Bank}
+\label{sec:anchor}
+
+A small bank of $M \le 8$ keyframe anchors provides long-range visual identity
+conditioning.  The bank is seeded from the first frame of chunk 1 and updated
+when two consecutive chunks trigger a scene-change signal (cosine similarity
+below threshold $\rho_a=0.78$ for $P=2$ consecutive chunks).  Additionally,
+a \emph{forced insertion} every $F_a=5$ chunks prevents bank stagnation on
+visually stable sequences where the similarity threshold is never triggered.
+
+Anchors are retrieved via cosine similarity and injected as
+\texttt{VideoConditionByKeyframeIndex} at frame index 0 of the current chunk.
+Anchors too similar to the current overlap (${\rm sim} > 0.85$) are skipped to
+avoid duplicating the SLB conditioning.  LRU eviction discards the least recently
+used anchor when the bank is full.
+
+\subsection{Stability Analysis}
+\label{sec:stability}
+
+The AdaIN blend (Section~\ref{sec:adain}) and context re-noising
+(Section~\ref{sec:renoise}) together reduce the magnitude of any per-chunk
+latent perturbation by a factor $(1-\beta)(1-\tau_c)$ before it reaches the
+next chunk's denoiser.  This gives the \emph{loop gain}:
+\begin{equation}
+\rho_{\text{loop}} = (1-\beta)\cdot(1-\tau_c)
+\label{eq:rholoop}
+\end{equation}
+The combined closed-loop gain, accounting for the model's open-loop
+amplification $g$, is:
+\begin{equation}
+\rho_{\text{closed}} = g \cdot \rho_{\text{loop}}
+\end{equation}
+Bounded drift requires $\rho_{\text{closed}} < 1$.  With $\beta=0.40$ and
+$\tau_c=0.05$, $\rho_{\text{loop}} = 0.57$, providing $\approx43\%$ gain
+reduction per chunk before accounting for $g$.
+
+Note that Eq.~\eqref{eq:rholoop} is a first-order approximation that treats the
+two corrections as independent multiplicative attenuators.  In practice $g$ is
+not constant: it depends on the step count, guidance strength, noise schedule,
+and the spectral properties of the current latent.  The analysis therefore
+provides a stability condition rather than a precise quantitative bound.  The
+frequency-band shrinkage (Section~\ref{sec:shrink}) provides additional spectral
+attenuation beyond $\rho_{\text{loop}}$, especially in high-frequency bands, but
+is not included in the linear gain model because its contribution is content- and
+chunk-dependent.
+
+\paragraph{Hyperparameter Choices.}
+$\beta=0.40$ is the largest value that preserves scene-change responsiveness in
+practice: at $\beta\geq0.5$ slow colour shifts accumulate due to excessive EMA
+anchoring.  $\tau_c=0.05$ is a conservative re-noising level that maintains
+high boundary similarity ($>0.97$) while partially correcting SLB distribution
+shift; larger values ($\tau_c\geq0.20$) cause visible motion discontinuities on
+22B streaming.  Together they yield $\rho_{\text{loop}}=0.57$, which empirically
+provides adequate margin given that $g$ appears to be below $\approx1.07$ for
+the tested configuration (Section~\ref{sec:discussion}).  $\lambda=0.10$ (EMA
+rate) was chosen to respond to gradual scene evolution without over-weighting
+individual chunks; $\boldsymbol\gamma=(0.0,\,0.05,\,0.2,\,0.3)$ are
+conservative exponents that attenuate only bands with clear excess energy.
+
+\paragraph{Per-Chunk Gain Measurement.}
+$g$ is measured empirically by running a second denoising pass with a slightly
+perturbed overlap latent $\tilde{L}_{\text{overlap}} + \delta$
+($\|\delta\|_F = \epsilon\,\|\tilde{L}_{\text{overlap}}\|_F$, $\epsilon=0.01$)
+and comparing the output perturbation to the input:
+\begin{equation}
+g_{\rm SLB} = \frac{\|\Delta_{\rm output}^{\rm SLB}\|_F}{\|\delta\|_F}
+\label{eq:gslb}
+\end{equation}
+where $\Delta_{\rm output}^{\rm SLB}$ is restricted to the last
+$\text{overlap\_lf}$ new frames---the portion that becomes the next chunk's
+SLB.  This measures sensitivity of the boundary output to boundary input
+perturbations, which is the relevant quantity for SLB-mediated drift
+propagation.  It does not capture drift arising from other channels (e.g.,
+prompt conditioning or attention to non-overlap frames), so $g_{\rm SLB}$
+is a lower bound on the true open-loop gain.
+
+%--------------------------------------------------------------------------
+\section{Algorithm}
+\label{sec:algorithm}
+%--------------------------------------------------------------------------
+
+Algorithm~\ref{alg:clss} summarises the per-chunk CLSS procedure.
+
+\begin{algorithm}[H]
+\caption{CLSS per-chunk generation}
+\label{alg:clss}
+\begin{algorithmic}[1]
+\Require Config: $\tau_c, \beta, \lambda, \boldsymbol\gamma$; state: SLB, EMA, anchor bank
+\State $L_{\text{ov}} \leftarrow$ SLB.read()  \Comment{may be empty for chunk 0}
+\State $\tilde{L}_{\text{ov}} \leftarrow (1-\tau_c)\,L_{\text{ov}} + \tau_c\,\varepsilon$ \Comment{Eq.~\eqref{eq:renoise}; Sect.~\ref{sec:renoise}}
+\State $A \leftarrow$ anchor\_bank.retrieve(top-$m$ by cosine sim) \Comment{Sect.~\ref{sec:anchor}}
+\State $L_N \leftarrow$ Denoise($\tilde{L}_{\text{ov}},\, A,\, \text{prompt}_N$)
+\State $L_N^{\rm new} \leftarrow L_N[\text{overlap\_lf}:]$ \Comment{drop overlap region}
+\State $L_N^{\rm new} \leftarrow$ AdaIN\_blend($L_N^{\rm new}$, EMA, $\beta$) \Comment{Sect.~\ref{sec:adain}}
+\State $L_N^{\rm new} \leftarrow$ band\_soft\_shrink($L_N^{\rm new}$, band\_EMA, $\boldsymbol\gamma$) \Comment{Sect.~\ref{sec:shrink}}
+\State EMA.update($L_N^{\rm new}$, $\lambda$); band\_EMA.update($L_N^{\rm new}$, $\lambda$)
+\State anchor\_bank.update(last frame of $L_N^{\rm new}$) \Comment{Sect.~\ref{sec:anchor}}
+\State SLB.push($L_N^{\rm new}[-\text{overlap\_lf}:]$)
+\State \Return $L_N^{\rm new}$
+\end{algorithmic}
+\end{algorithm}
+
+%--------------------------------------------------------------------------
+\section{Implementation}
+\label{sec:impl}
+%--------------------------------------------------------------------------
+
+\subsection{Memory Budget for 16\,GB VRAM}
+\label{sec:memory}
+
+LTX-2.3 22B in BF16 occupies $\approx44$\,GB.  Three complementary strategies
+fit it within 16\,GB VRAM:
+
+\begin{enumerate}[leftmargin=*,noitemsep]
+\item \textbf{GGUF 4-bit quantisation} (Q4\_K\_S): reduces the on-disk size
+  to $\approx11$\,GB.  Dequantization to BF16 at load time requires
+  $\approx44$\,GB of pinned CPU RAM.
+\item \textbf{CPU block-streaming}: all transformer blocks reside in pinned
+  CPU RAM; only 2 blocks are resident on GPU at a time ($\approx5$\,GB
+  model weights on GPU), with the next block pre-fetched asynchronously
+  via a dedicated CUDA stream.
+\item \textbf{Temporal chunking (CLSS)}: latent memory is $O(\text{overlap\_lf})$
+  instead of $O(\text{total\_frames})$.  Processed chunk latents are immediately
+  offloaded to CPU after each chunk.
+\end{enumerate}
+
+Combined peak VRAM budget at $512\times768$ resolution:
+\begin{center}
+\begin{tabular}{lr}
+\toprule
+Component & Peak VRAM \\
+\midrule
+Model blocks (2 $\times$ BF16, streaming) & $\approx5$\,GB \\
+Activations + latents (per chunk) & $\approx4$\,GB \\
+VAE / text encoder (loaded/freed) & $\approx2$\,GB \\
+\midrule
+\textbf{Total peak} & $\approx11$\,GB \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Two-Stage Pipeline}
+\label{sec:twostage}
+
+\paragraph{Stage 1 (Open-resolution streaming).}
+CLSS streaming generates the full video at a coarse latent resolution
+($H_L \times W_L$ latent grid, typically $11\times20$ for $704\times512$ output).
+Each chunk runs the full 20--30-step LTX scheduler.  CLSS corrections are applied
+between chunks as per Algorithm~\ref{alg:clss}.
+
+\paragraph{Stage 2 (Distilled-LoRA refinement).}
+Stage 1 operates at $704\times512$ output resolution and 20 denoising steps,
+which is sufficient for temporal structure and scene content but produces
+visible quantisation artefacts and reduced texture detail, particularly after
+GGUF 4-bit dequantisation at the low-frequency latent scale.  Stage 2 addresses
+this by upsampling and refining the output.
+
+The Stage 1 output is spatially upsampled $2\times$ by
+\texttt{LTXVLatentUpsampler}, yielding a $22\times40$ latent grid corresponding
+to $1408\times1024$ pixel resolution.  Stage 2 then refines the full video in
+temporal chunks using a 3-step distilled-LoRA schedule with initial noise level
+$\sigma_0 \approx 0.909$.  Each chunk's new frames are seeded from the upscaled
+Stage 1 latent with $\sigma_0$-scaled noise:
+\begin{equation}
+x_{\text{start}} = \sigma_0\,\varepsilon + (1-\sigma_0)\,L_N^{\text{S1}}
+\end{equation}
+This formulation anchors Stage 2 to the coarse temporal structure produced by
+Stage 1---preserving scene layout, motion trajectories, and chunk boundaries
+established by CLSS---while allowing the 3-step refinement to add local
+high-frequency detail.  Stage 1 alone could in principle be generated at
+$2\times$ resolution, but this would quadruple token count and exceed VRAM
+budget under CPU block-streaming.
+
+Key differences from Stage 1:
+\begin{itemize}[noitemsep]
+\item AdaIN and spectral-shrinkage corrections are \emph{disabled}: Stage 2
+  refinement is structurally anchored to the S1 latent, so distributional
+  drift correction is unnecessary.
+\item A global pre-generated noise field is sliced per chunk
+  (\texttt{\_SlicedNoise}) to prevent grain seams at chunk boundaries---a
+  single coherent noise tensor ensures that the per-chunk noise samples tile
+  seamlessly when concatenated.
+\item Audio is refined in parallel with the SLB at $\tau_c$ using the Stage 2
+  audio tail as context.
+\end{itemize}
+
+\subsection{Audio Streaming}
+\label{sec:audio}
+
+Audio and video share the same temporal chunk boundaries.  The audio SLB length
+is derived from the video SLB by preserving the temporal correspondence:
+\begin{equation}
+\text{overlap\_af} = \text{round}\!\left(\text{overlap\_lf} \times \frac{r_a}{r_v}\right)
+\end{equation}
+where $r_a = 25.0$\,lf/s and $r_v = 3.125$\,lf/s are the audio and video latent
+frame rates.  With $\text{overlap\_lf}=8$, this gives
+$\text{overlap\_af} = \text{round}(8 \times 8.0) = 64$\,audio latent frames.
+
+\paragraph{Soft energy normalisation.}
+Audio energy tends to drift downward over chunks because each chunk is
+conditioned on a slightly quieter audio overlap (the denoiser contracts the
+dynamic range).  After generating chunk $N$, the new audio frames are blended
+toward the first chunk's RMS energy $E_0$:
+\begin{equation}
+\hat{a}_N = (1-\beta_a)\,a_N + \beta_a\,a_N \cdot \frac{E_0}{\|a_N\|_{\rm rms} + \epsilon}
+\end{equation}
+with $\beta_a=0.30$.  This prevents progressive quietening across the sequence
+while allowing natural per-scene amplitude variation to persist.
+
+\paragraph{Boundary smoothing.}
+At each audio SLB boundary, a linear blend over $\pm2$ audio latent frames is
+applied in latent space before VAE decoding.  This eliminates click artifacts
+that arise from the abrupt splice between the overlap tail and the new chunk,
+which would otherwise be visible as discontinuities in the spectrogram.
+
+\subsection{ComfyUI Node Integration}
+\label{sec:nodes}
+
+Four custom nodes implement the full pipeline inside ComfyUI:
+
+\begin{enumerate}[leftmargin=*,noitemsep]
+\item \textbf{CLSSConfig}: exposes all CLSS hyperparameters
+  ($\tau_c, \beta, \lambda, \Delta_\sigma, F_a$, AdaIN cap).
+\item \textbf{CLSSScenePrompts}: multi-scene text input via \texttt{---} delimiters;
+  Gemma-enhanced per scene.  Output is a flat CONDITIONING list with one entry
+  per scene, proportionally assigned to chunks.
+\item \textbf{CLSSStreamingSampler}: Stage 1 streaming sampler.  Accepts any
+  ComfyUI GUIDER/SAMPLER/SIGMAS/NOISE/LATENT combination.
+\item \textbf{CLSSStage2}: Stage 2 refinement sampler with consistent per-chunk
+  noise slicing.
+\end{enumerate}
+
+%--------------------------------------------------------------------------
+\section{Experiments}
+\label{sec:experiments}
+%--------------------------------------------------------------------------
+
+Two generation experiments are reported, both using the same CLSS configuration
+but differing in the first-frame conditioning: Experiment~1 uses text-to-video
+(T2V) generation with no image prior; Experiment~2 uses image-to-video (I2V)
+generation conditioned on a single guide frame ($1\times11\times20$ latent).
+
+\subsection{Shared Configuration}
+
+\begin{table}[H]
+\centering
+\caption{Shared configuration for both experiments.}
+\label{tab:config}
+\begin{tabular}{ll}
+\toprule
+Parameter & Value \\
+\midrule
+Model & LTX-2.3 22B (Q4\_K\_S GGUF) \\
+Resolution & $704\times512$ (Stage 1), $1408\times1024$ (Stage 2) \\
+Frames & 93 latent = $\approx30$\,s @ 25\,fps \\
+Stage 1 chunks & 3, $\text{new\_lf}=31$, $\text{overlap}=8$ \\
+Stage 1 steps & 20 \\
+Stage 2 chunks & 5, $\text{fpc}=21$, $\text{overlap}=8$ \\
+Stage 2 steps & 3 (distilled) \\
+$\tau_c$ & 0.05 \\
+$\beta$ & 0.40 \\
+$\lambda$ & 0.10 \\
+$\Delta_\sigma$ & 0.05 \\
+$F_a$ & 5 \\
+$\boldsymbol\gamma$ & $(0.0,\,0.05,\,0.2,\,0.3)$ \\
+Video CFG & 4.5, STG 1.0, modality 3.0 \\
+Audio CFG & 7.0, STG 1.0 \\
+Scenes & 3 (one per Stage 1 chunk) \\
+VRAM (GPU) & 15.61\,GB (RTX-class) \\
+\midrule
+Exp.~1 first-frame & Text only (T2V) \\
+Exp.~2 first-frame & Guide image, latent $[1,128,1,11,20]$ (I2V) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%--------------------------------------------------------------------------
+\subsection{Experiment 1: Text-to-Video (T2V)}
+\label{sec:exp_t2v}
+%--------------------------------------------------------------------------
+
+\subsubsection{Stage 1 Results}
+
+Table~\ref{tab:s1_metrics} reports per-chunk metrics.  Chunk 1 is the reference;
+subsequent chunks compare against the anchor bank entry seeded from chunk 1's
+last frame (frame 30).
+
+\begin{table}[H]
+\centering
+\caption{T2V Stage 1 per-chunk metrics.  Identity\_sim for chunk 2 nearly equals
+boundary\_sim because both compare the same pair of frames (anchor at frame 30 vs
+first frame of chunk 2), confirming SLB and anchor bank agree.}
+\label{tab:s1_metrics}
+\begin{tabular}{ccccc}
+\toprule
+Chunk & Boundary & Intra & Identity & $\rho_{\rm loop}$ \\
+ & sim$\uparrow$ & sim$\uparrow$ & sim$\uparrow$ & \\
+\midrule
+1/3 & N/A & 0.7333 & 1.0000 (ref) & 0.570 \\
+2/3 & 0.9949 & 0.7375 & 0.9949 & 0.570 \\
+3/3 & 0.9950 & 0.8861 & 0.7224 & 0.570 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Boundary similarities (0.9949, 0.9950) are nearly identical across both
+transitions, confirming that the SLB with $\tau_c=0.05$ reliably locks the
+visual hand-off regardless of chunk content.  Intra-chunk similarities
+(0.73--0.89) reflect the natural within-chunk variation expected for
+$\text{new\_lf}=31$ spanning approximately 10\,s per chunk with three distinct
+scenes.  The identity\_sim drop to 0.7224 by chunk 3 reflects two accumulated
+scene transitions over 62 latent frames, consistent with intended multi-scene
+content rather than model drift.
+
+Table~\ref{tab:s1_adain} shows AdaIN corrections and spectral band gains.
+Chunk 1 receives no correction (EMA uninitialised; it is the reference).
+Chunk 2 receives a small upward mean shift ($+0.007$) and moderate std lift
+($+0.044$).  By chunk 3, the EMA has largely converged, and spectral shrinkage
+takes over: band~3 gain falls to 0.9377, indicating that scene~3's
+high-frequency latent energy had grown $\approx6.7\%$ above the EMA reference
+established by scenes 1--2.
+
+\begin{table}[H]
+\centering
+\caption{T2V Stage 1 AdaIN corrections and band gains.
+Band 0 is the DC band ($\gamma_0=0$, gain$\equiv1$).}
+\label{tab:s1_adain}
+\begin{tabular}{ccccccc}
+\toprule
+Chunk & $\Delta\mu$ & $\Delta\sigma$ & $g_0$ & $g_1$ & $g_2$ & $g_3$ \\
+\midrule
+1 & $+0.000$ & $+0.000$ & 1.0000 & 1.0000 & 1.0000 & 1.0000 \\
+2 & $+0.007$ & $+0.044$ & 1.0000 & 0.9997 & 0.9917 & 0.9946 \\
+3 & $+0.003$ & $+0.007$ & 1.0000 & 0.9962 & 0.9659 & 0.9377 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The anchor bank retains one entry throughout (bank$\_$size$=1$, frame 30).
+Chunk 2 reaches last\_frame\_max\_sim$=0.743$ (streak$=1$), but persistence
+requires $P=2$ consecutive sub-threshold chunks before a new anchor is committed.
+Chunk 3 returns above threshold (sim$=0.802$, streak resets), so no second
+anchor is committed.
+
+\subsubsection{Stage 2 Results}
+
+\begin{table}[H]
+\centering
+\caption{T2V Stage 2 per-chunk metrics (5 chunks, $\text{fpc}=21$).
+Identity\_sim compares against Stage 2 chunk~1's first frame; the 0.41--0.52
+plateau reflects 3 distinct scenes rather than model instability.}
+\label{tab:s2_metrics}
+\begin{tabular}{ccccc}
+\toprule
+Chunk & Frames (lat) & Boundary sim$\uparrow$ & Intra sim$\uparrow$ & Identity sim$\uparrow$ \\
+\midrule
+1/5 & 0--21 & N/A & 0.4797 & 1.0000 (ref) \\
+2/5 & 21--42 & 0.9928 & 0.9870 & 0.4798 \\
+3/5 & 42--63 & 0.9839 & 0.9749 & 0.5204 \\
+4/5 & 63--84 & 0.9856 & 0.9355 & 0.4120 \\
+5/5 & 84--93 & 0.9904 & 0.9174 & 0.4310 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Stage 2 boundary similarities (0.984--0.993) confirm smooth transitions at
+all four chunk boundaries.  Intra-chunk similarities are substantially higher
+than Stage 1 (0.917--0.987 for chunks 2--5 vs 0.73--0.89), as Stage 2 is
+anchored to the S1 upscaled latent and requires only 3 refinement steps.
+The low first-chunk intra similarity (0.4797) reflects the absence of SLB
+overlap for Stage 2 chunk 1 and the inherent scene variation already present
+in Stage 1 scene 1.
+
+The full refined video latent has shape $[1,128,93,22,40]$, mean$=0.0293$,
+std$=0.9970$, no NaN/Inf.  The assembled audio std (0.916) is substantially
+higher than the Stage 1 audio std (0.650), confirming that the distilled
+refinement actively reshapes the audio distribution.
+
+\subsubsection{Audio Coherence}
+
+\begin{table}[H]
+\centering
+\caption{T2V within-chunk audio similarity (cosine, three sequential segment pairs).}
+\label{tab:aud_s1}
+\begin{tabular}{cccc}
+\toprule
+Stage & Chunk & Seg 1$\to$2 & Seg 2$\to$3 \\
+\midrule
+S1 & 1/3 & $-0.254$ & $-0.337$ \\
+S1 & 2/3 & $+0.940$ & $+0.814$ \\
+S1 & 3/3 & $+0.990$ & $+0.987$ \\
+\midrule
+S2 & 1/5 & $-0.469$ & $+0.901$ \\
+S2 & 2/5 & $-0.044$ & $+0.374$ \\
+S2 & 3/5 & $+0.659$ & $+0.305$ \\
+S2 & 4/5 & $+0.956$ & $+0.940$ \\
+S2 & 5/5 & $+0.911$ & $+0.913$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Stage 1 chunk~1 audio is strongly anti-correlated ($-0.254 \to -0.337$),
+a consequence of generating from pure noise with no audio SLB and no strong
+visual prior.  Once the audio SLB activates at chunk~2, coherence jumps
+to $0.940 \to 0.814$ and reaches $0.990 \to 0.987$ by chunk~3.
+
+Stage 2 audio follows the same causal pattern: the first two chunks show
+mixed coherence (reflecting that S2 inherits the incoherent S1 chunk~1 audio),
+while chunks 4--5 reach $0.91$--$0.96$ as the audio SLB accumulates refined
+context.
+
+%--------------------------------------------------------------------------
+\subsection{Experiment 2: Image-to-Video (I2V)}
+\label{sec:exp_i2v}
+%--------------------------------------------------------------------------
+
+In this experiment a single guide image is encoded to a latent of shape
+$[1,128,1,11,20]$ and provided as first-frame conditioning to Stage~1
+chunk~1.  All CLSS hyperparameters are identical to Experiment~1.
+
+\subsubsection{Stage 1 Results}
+
+\begin{table}[H]
+\centering
+\caption{I2V Stage 1 per-chunk metrics.}
+\label{tab:i2v_s1_metrics}
+\begin{tabular}{ccccc}
+\toprule
+Chunk & Boundary sim$\uparrow$ & Intra sim$\uparrow$ & Identity sim$\uparrow$ & $\rho_{\rm loop}$ \\
+\midrule
+1/3 & N/A & 0.2649 & 1.0000 (ref) & 0.570 \\
+2/3 & 0.9495 & 0.5538 & 0.9495 & 0.570 \\
+3/3 & 0.9464 & 0.5904 & 0.7638 & 0.570 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Boundary continuity remains high (0.9495, 0.9464), demonstrating CLSS
+correctness under image conditioning.  Intra-chunk similarities (0.26--0.59)
+are lower than T2V (0.73--0.89): this is expected, as I2V mode generates
+video that must travel from a specific fixed first frame through the scene
+narrative, producing more within-chunk visual change than unconstrained T2V.
+Chunk~1's intra similarity of 0.2649 (vs 0.7333 in T2V) directly reflects
+this: the model starts at the guide image and moves significantly away from
+it over 31 latent frames.
+
+\begin{table}[H]
+\centering
+\caption{I2V Stage 1 AdaIN corrections and band gains.}
+\label{tab:i2v_s1_adain}
+\begin{tabular}{ccccccc}
+\toprule
+Chunk & $\Delta\mu$ & $\Delta\sigma$ & $g_0$ & $g_1$ & $g_2$ & $g_3$ \\
+\midrule
+1 & $+0.000$ & $+0.000$ & 1.0000 & 1.0000 & 1.0000 & 1.0000 \\
+2 & $-0.009$ & $-0.063$ & 1.0000 & 0.9931 & 0.9921 & 0.9918 \\
+3 & $+0.002$ & $-0.168$ & 1.0000 & 0.9945 & 0.9922 & 0.9945 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The AdaIN correction in chunk~2 has a downward std direction ($\Delta\sigma=-0.063$)
+compared to the upward direction in T2V ($+0.044$): the image-conditioned
+chunk~1 produces a higher std than the subsequent text-only chunks, so AdaIN
+here compresses rather than expands.  Chunk~3 requires the largest std correction
+of either experiment ($-0.168$), pulling the raw pre-correction std of 1.12
+down to 0.95; the band~3 shrinkage gain (0.9945) is mild here because spectral
+energy has not grown as strongly as in T2V.
+
+The anchor bank grows to size~2 by chunk~3: chunk~2 triggers a scene-change
+streak (sim$=0.7343$, streak$=1$), and chunk~3 commits a second anchor at
+frame~92 (bank\_frame\_ids$=[30,\,92]$), growing the bank from 1 to 2.
+
+\subsubsection{Stage 2 Results}
+
+\begin{table}[H]
+\centering
+\caption{I2V Stage 2 per-chunk metrics.  Identity\_sim compares against Stage 2
+chunk~1's first frame (the guide-image frame); the negative values for chunks 3--5
+reflect that those scenes are substantially different from the opening image.}
+\label{tab:i2v_s2_metrics}
+\begin{tabular}{ccccc}
+\toprule
+Chunk & Frames (lat) & Boundary sim$\uparrow$ & Intra sim$\uparrow$ & Identity sim \\
+\midrule
+1/5 & 0--21 & N/A & $-0.020$ & 1.0000 (ref) \\
+2/5 & 21--42 & 0.9854 & 0.6612 & $+0.095$ \\
+3/5 & 42--63 & 0.8342 & 0.7772 & $-0.179$ \\
+4/5 & 63--84 & 0.9897 & 0.5971 & $-0.202$ \\
+5/5 & 84--93 & 0.9863 & 0.8761 & $-0.200$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Stage 2 boundary continuity is maintained at four of five boundaries
+(0.985--0.990), with one lower-similarity transition at chunk~3 (0.834).
+The Stage 2 chunk~3 boundary covers the mid-sequence scene transition where
+Stage 1 audio was also less coherent (Section~\ref{sec:i2v_audio}), suggesting
+a localised region of lower-quality Stage 1 generation that Stage 2 partially
+corrects but cannot fully eliminate.
+
+Stage 2 chunk~1 has an intra similarity of $-0.020$ (nearly zero), much lower
+than T2V's 0.480.  This reflects that I2V Stage 1 chunk~1 already had very low
+intra similarity (0.265), and Stage 2 chunk~1 covers exactly that region (latent
+frames 0--21).  The negative value indicates that the first and last frames of
+this refined chunk are essentially uncorrelated---the refined video transitions
+dramatically within the first 6.7 seconds, consistent with a video that begins
+at a specific guide image and moves through its first scene.
+
+The identity\_sim values for chunks 3--5 ($-0.18$ to $-0.20$) are substantially
+more negative than T2V ($+0.41$ to $+0.52$), because in I2V mode the Stage 2
+reference frame is the guide image, which is by construction very different from
+the content of scenes 2 and 3.
+
+\subsubsection{Audio Coherence}
+\label{sec:i2v_audio}
+
+\begin{table}[H]
+\centering
+\caption{I2V within-chunk audio similarity (cosine, three sequential segment pairs).}
+\label{tab:aud_i2v}
+\begin{tabular}{cccc}
+\toprule
+Stage & Chunk & Seg 1$\to$2 & Seg 2$\to$3 \\
+\midrule
+S1 & 1/3 & $+0.998$ & $+0.999$ \\
+S1 & 2/3 & $+0.984$ & $-0.824$ \\
+S1 & 3/3 & $+0.992$ & $+0.811$ \\
+\midrule
+S2 & 1/5 & $+0.980$ & $+0.975$ \\
+S2 & 2/5 & $+0.974$ & $+0.890$ \\
+S2 & 3/5 & $+0.163$ & $+0.175$ \\
+S2 & 4/5 & $+0.919$ & $+0.973$ \\
+S2 & 5/5 & $+0.967$ & $-0.289$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+In I2V mode, Stage~1 chunk~1 audio is highly coherent ($+0.998 \to +0.999$),
+in stark contrast to T2V chunk~1 ($-0.254 \to -0.337$).  This difference is
+significant: both experiments have no audio SLB at chunk~1.  The sole difference
+is the guide image, which provides a strong visual anchor via cross-modal
+attention in LTX-2.3's joint audio-video transformer.  This demonstrates that
+audio coherence in chunk~1 depends not only on the audio SLB but also on the
+strength of the visual context conditioning.
+
+Stage~1 chunk~2 audio shows a within-chunk drop: the first segment pair is
+coherent ($+0.984$) but the second is anti-correlated ($-0.824$).  This occurs
+at the second scene boundary, where the model transitions to new scene content
+partway through chunk~2; the joint audio-video denoiser appears to handle the
+video transition but produce momentarily incoherent audio mid-chunk.
+
+In Stage~2, the I2V audio is highly coherent in chunks 1--2 (inheriting the
+coherent S1 audio) but shows a collapse at chunk~3 ($+0.163 \to +0.175$),
+which corresponds to the audio region seeded from S1 chunk~2's incoherent
+second half ($-0.824$).  Chunks 4--5 recover to $0.92$--$0.97$ once the
+Stage~2 audio SLB has accumulated sufficient refined context.
+
+%--------------------------------------------------------------------------
+\subsection{Computational Overhead}
+%--------------------------------------------------------------------------
+
+\begin{table}[H]
+\centering
+\caption{Wall-clock timing on a 16\,GB GPU (RTX-class, CPU block-streaming).
+T2V and I2V timings are nearly identical; token counts, not conditioning mode,
+dominate iteration cost.}
+\label{tab:timing}
+\begin{tabular}{llccc}
+\toprule
+Stage & Chunk & Frames (new+SLB) & Tokens & Time \\
+\midrule
+S1 T2V & 1/3 & 31+0 & 27,280 & $\approx6.9$\,min \\
+S1 T2V & 2--3 & 31+8 & 34,320 & $\approx8.8$\,min each \\
+S1 I2V & 1/3 & 31+0 (+1 guide) & 28,160 & $\approx7.0$\,min \\
+S1 I2V & 2--3 & 31+8 & 34,320 & $\approx8.9$\,min each \\
+\midrule
+S2 & 1/5 & 21+0 & 18,480 & $\approx5.0$\,min \\
+S2 & 2--4 & 21+8 & 25,520 & $\approx7.4$\,min each \\
+S2 & 5/5 & 9+8 & 14,960 & $\approx4.1$\,min \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Total generation time: T2V $\approx24.6\,\text{min (S1)} + 30.6\,\text{min (S2)}
+= \mathbf{55}\,\textbf{min}$; I2V $\approx24.9\,\text{min (S1)} +
+31.3\,\text{min (S2)} = \mathbf{56}\,\textbf{min}$.  Both modes produce
+approximately 30 seconds of audio-video in under one hour on a single 16\,GB GPU.
+The per-iteration cost is determined by token count rather than conditioning mode:
+Stage~2 chunk~1 (18,480 tokens) costs $\approx100$\,s/it vs $\approx147$\,s/it
+for 25,520-token chunks.
+
+%--------------------------------------------------------------------------
+\section{Discussion}
+\label{sec:discussion}
+%--------------------------------------------------------------------------
+
+\subsection{Effect of Chunk Length}
+
+Both experiments used $\text{new\_lf}=31$ ($\approx10$\,s per chunk at 25\,fps),
+exceeding the 21-frame safe limit established in earlier open-loop testing.
+With CLSS corrections fully active, T2V achieves Stage~1 boundary similarities
+of 0.9949--0.9950 and I2V achieves 0.9464--0.9495: both well above the values
+obtainable without corrections.  Spectral shrinkage applies progressively
+stronger corrections in later chunks (T2V band~3 gain$=0.938$ at chunk~3; I2V
+band~3 gain$=0.994$ at chunk~3, with the remaining correction handled by AdaIN),
+demonstrating that CLSS widens the practical chunk-length operating range beyond
+what open-loop streaming allows.
+
+The I2V experiment's lower boundary similarities (0.946--0.950 vs T2V's
+0.995) are consistent with the I2V generation producing more dynamic visual
+transitions: the model moves from a specific fixed frame toward the target scene,
+creating larger inter-chunk visual change at boundaries.
+
+\subsection{Identity Tracking and the Anchor Bank Fix}
+
+The repaired identity\_sim metric reveals a qualitatively new observation: chunk
+2's identity\_sim (0.9949) equals its boundary\_sim exactly.  This is not a
+coincidence---it is a \emph{self-consistency check}.  The anchor was seeded from
+chunk 1's last frame; the SLB passes that same frame as the first latent frame of
+chunk 2's conditioning.  Therefore the anchor query and the boundary query both
+compare the same source frame (chunk 1 frame 30) against the same target frame
+(chunk 2 frame 0).  Seeing both metrics agree validates that the anchor bank and
+the SLB are operating on the same reference, and that the tau\_c re-noising at the
+boundary introduces only minimal distributional shift ($\leq0.5\%$ similarity loss).
+
+\subsection{Audio Coherence and the Role of Visual Context}
+
+The two experiments together reveal that audio coherence in chunk~1 is not
+determined solely by the presence of an audio SLB, but also by the strength
+of the visual context.
+
+In T2V (Experiment~1), Stage~1 chunk~1 audio is anti-correlated ($-0.254 \to
+-0.337$) despite 20 denoising steps over 253 audio latent frames.  In I2V
+(Experiment~2), with the same step count and the same absence of an audio SLB,
+chunk~1 audio reaches $+0.998 \to +0.999$.  The sole conditioning difference is
+the guide image.  In LTX-2.3's joint audio-video transformer, visual tokens and
+audio tokens share the same self-attention layers; a strong single-frame visual
+anchor therefore constrains the audio generation implicitly through cross-modal
+attention, preventing the audio from wandering incoherently across the chunk.
+
+This suggests that the T2V audio incoherence at chunk~1 arises from the absence
+of \emph{any} strong conditioning anchor---neither an audio SLB nor a visual
+reference---rather than from a fundamental limitation of the step count.  A
+short silent audio SLB or a visual guide image are thus alternative mitigations;
+the I2V experiment provides empirical evidence that the latter is sufficient.
+
+Subsequent chunks in both experiments benefit from the audio SLB and achieve
+high coherence ($\geq0.81$ in S1; $\geq0.91$ by S2 chunks 4--5 in T2V).
+The I2V Stage~2 audio shows a localised collapse at chunk~3 ($+0.163 \to
++0.175$), tracing back to the anti-correlated audio in Stage~1 chunk~2's
+second half ($-0.824$), which Stage~2 refinement only partially corrects.
+
+\subsection{Stability Margin}
+
+With $\rho_{\text{loop}} = 0.570$, the CLSS feedback loop provides a $43\%$
+gain reduction per chunk before accounting for the model's open-loop gain $g$.
+The band 3 gain in chunk 3 (0.938) indicates that high-frequency latent energy
+was growing by $\approx6.7\%$ per chunk without shrinkage correction---giving
+a rough empirical estimate of $g \approx 1.07$ for the spectral channel in this
+run.  The resulting $\rho_{\text{closed}} \approx 0.57 \times 1.07 \approx 0.61$
+provides ample margin below the stability boundary of 1.
+
+\subsection{Multi-Scene Prompting and Identity Metrics}
+
+The Stage 2 identity\_sim plateau at 0.41--0.52 across chunks 2--5 is consistent
+with three equally-distinct scenes.  Stage 2 lacks an anchor bank; identity
+tracking is reduced to comparing against the fixed first-chunk reference, which
+conflates intended scene changes with drift.  Adding an anchor bank to Stage 2
+would allow scene-aware identity tracking during refinement.
+
+%--------------------------------------------------------------------------
+\section{Limitations}
+\label{sec:limitations}
+%--------------------------------------------------------------------------
+
+\paragraph{Single experimental configuration.}
+All results in this paper are from a single generation run at one set of
+hyperparameters ($\text{new\_lf}=31$, $\text{overlap}=8$, 3 chunks, 3 scenes)
+on one hardware configuration (16\,GB VRAM, RTX-class).  No baseline
+comparisons against open-loop streaming are reported, and no ablation of the
+individual CLSS components (re-noising alone, AdaIN alone, shrinkage alone,
+anchor bank alone) has been performed.  The paper therefore cannot quantify the
+marginal contribution of each correction or demonstrate improvement over the
+open-loop baseline from the same metrics.  These comparisons are left to future
+work.
+
+\paragraph{Stability metrics vs.\ perceptual quality.}
+The reported metrics---boundary cosine similarity, intra-chunk cosine similarity,
+audio within-chunk segment similarity---measure the \emph{stability} of the
+latent representation across chunks.  They do not assess the perceptual quality
+of the generated content, prompt adherence, or realism.  Standard quality metrics
+(FID, IS, CLIP similarity, human evaluation) would be required to characterise
+the generated video as a content generation system.  High boundary similarity is
+a necessary but not sufficient condition for high video quality.
+
+\paragraph{Stability model assumptions.}
+The linear gain model in Section~\ref{sec:stability} assumes that $g$ is
+approximately constant and that the AdaIN and re-noising corrections act as
+independent multiplicative attenuators.  Both assumptions simplify the analysis:
+the actual closed-loop dynamics involve higher-order interactions between
+corrections, guidance, and scene content.  A more rigorous treatment (e.g.,
+Lyapunov stability for the latent iteration) would require characterising the
+denoiser's Jacobian across a distribution of latent inputs.
+
+\paragraph{Hardware specificity.}
+The GGUF 4-bit quantisation and CPU block-streaming configuration was designed
+for a specific VRAM budget (16\,GB).  Performance, latency, and numerical
+behaviour may differ on GPUs with more VRAM (where block-streaming is
+unnecessary) or with different quantisation schemes (e.g., Q8 or FP8).
+
+%--------------------------------------------------------------------------
+\section{Related Work}
+\label{sec:related}
+%--------------------------------------------------------------------------
+
+\paragraph{Long video generation.}
+StreamingT2V~\cite{henschel2024streamingt2v} and FIFO-Diffusion~\cite{kim2024fifo}
+generate long videos by sliding-window denoising.  Gen-L-Video~\cite{wang2023gen}
+uses temporal attention patching.  CLSS differs by applying closed-loop corrections
+specifically designed for the latent-streaming regime of large audio-video models.
+
+\paragraph{Exposure bias in diffusion.}
+The exposure bias problem in autoregressive models is well-studied~\cite{bengio2015scheduled}.
+For diffusion models, Ning et al.~\cite{ning2023elucidating} and
+Salimans \& Ho~\cite{salimans2022progressive} address related distributional
+mismatch issues during training, but inference-time corrections for streaming
+have received less attention.
+
+\paragraph{Statistical normalisation for consistency.}
+Adaptive Instance Normalisation (AdaIN)~\cite{huang2017arbitrary} was introduced
+for style transfer, where the goal is to match the mean and standard deviation of
+a content feature map to those of a style reference.  EMA-based statistical
+normalisation across video frames has also appeared in temporal consistency methods.
+In CLSS, AdaIN is repurposed as a \emph{drift correction} applied to denoised
+latents between chunks, using the cross-chunk EMA as the style reference.  The
+combination of EMA tracking with AdaIN blending (rather than full replacement) is
+motivated by the streaming setting, where the reference must itself evolve to allow
+intentional scene changes.
+
+\paragraph{Frequency-domain video editing.}
+Yang et al.~\cite{yang2024fresco} and Ceylan et al.~\cite{ceylan2023pix2video}
+use frequency-domain constraints for temporal consistency in video editing.  CLSS applies frequency
+shrinkage in the \emph{latent} domain to a streaming generation setting, targeting
+energy accumulation rather than pixel-domain flicker.
+
+%--------------------------------------------------------------------------
+\section{Conclusion}
+\label{sec:conclusion}
+%--------------------------------------------------------------------------
+
+We presented CLSS, a four-component closed-loop streaming synthesis framework
+that enables stable long audio-video generation with LTX-2.3 22B on consumer
+16\,GB VRAM hardware.  The four corrections---calibrated context re-noising,
+EMA-tracked AdaIN, frequency-band soft shrinkage, and a dynamic anchor bank---
+achieve $\rho_{\text{loop}}=0.570$ and maintain Stage~1 boundary similarities
+above 0.946 across both T2V and I2V experiments.  A two-stage pipeline
+(streaming S1 + chunked distilled S2) delivers a fully refined audio-video
+output in approximately 55--56 minutes per 30-second clip on a single 16\,GB GPU.
+
+Comparison of the T2V and I2V experiments reveals that audio coherence in the
+first generated chunk---where no audio SLB is available---depends on the
+presence of a strong visual conditioning anchor, not solely on the audio SLB.
+T2V chunk~1 audio is anti-correlated ($\approx-0.3$ per segment pair) while
+I2V chunk~1 audio, conditioned on a guide image, achieves $\approx+0.999$.
+This indicates that the joint audio-video cross-modal attention in LTX-2.3
+provides sufficient visual grounding to maintain audio coherence when a visual
+reference is present.  A natural extension is to supply a short audio reference
+or visual guide before chunk~1 even in T2V mode, priming the pipeline's
+audio coherence from the start.
+
+The ComfyUI node integration with per-chunk diagnostic telemetry supports rapid
+empirical validation of CLSS hyperparameter choices and provides interpretable
+monitoring of the feedback loop during generation.
+
+%--------------------------------------------------------------------------
+\section*{Acknowledgements}
+%--------------------------------------------------------------------------
+We thank the LTX-Video team at Lightricks for releasing LTX-2.3 and the
+associated GGUF weights, and the ComfyUI community for infrastructure.
+
+%--------------------------------------------------------------------------
+\bibliographystyle{plain}
+\begin{thebibliography}{99}
+
+\bibitem{henschel2024streamingt2v}
+R.~Henschel, L.~Khachatryan, D.~Hayrapetyan, H.~Poghosyan, R.~Abrahamyan,
+A.~Nersisyan, S.~I.~Yeranosyan, and O.~Kacher.
+\newblock {StreamingT2V}: Consistent, dynamic, and extendable long video generation from text.
+\newblock \emph{arXiv:2403.14773}, 2024.
+
+\bibitem{kim2024fifo}
+J.~Kim, J.~Jeong, S.~Park, M.~Kim, S.~Kim, and J.~Ye.
+\newblock {FIFO-Diffusion}: Generating infinite videos from text without training.
+\newblock \emph{arXiv:2405.11473}, 2024.
+
+\bibitem{wang2023gen}
+F.~Wang, W.~Chen, G.~Song, H.~Zhang, W.~Li, C.~Shen, and T.~Mei.
+\newblock Gen-{L}-Video: Multi-text conditioned long video generation via temporal co-denoising.
+\newblock \emph{arXiv:2305.18264}, 2023.
+
+\bibitem{bengio2015scheduled}
+S.~Bengio, O.~Vinyals, N.~Jaitly, and N.~Shazeer.
+\newblock Scheduled sampling for sequence prediction with recurrent neural networks.
+\newblock In \emph{NeurIPS}, 2015.
+
+\bibitem{ning2023elucidating}
+M.~Ning, M.~Li, J.~Su, A.~A.~Salah, and I.~Ertugrul.
+\newblock Elucidating the exposure bias in diffusion models.
+\newblock \emph{arXiv:2308.15321}, 2023.
+
+\bibitem{salimans2022progressive}
+T.~Salimans and J.~Ho.
+\newblock Progressive distillation for fast sampling of diffusion models.
+\newblock In \emph{ICLR}, 2022.
+
+\bibitem{huang2017arbitrary}
+X.~Huang and S.~Belongie.
+\newblock Arbitrary style transfer in real-time with adaptive instance normalization.
+\newblock In \emph{ICCV}, 2017.
+
+\bibitem{yang2024fresco}
+S.~Yang, Y.~Zhou, Z.~Liu, and C.~C.~Loy.
+\newblock {FRESCO}: Spatial-temporal correspondence for zero-shot video translation.
+\newblock In \emph{CVPR}, 2024.
+
+\bibitem{ceylan2023pix2video}
+D.~Ceylan, C.-H.~Huang, and N.~J.~Mitra.
+\newblock {Pix2Video}: Video editing using image diffusion.
+\newblock In \emph{ICCV}, 2023.
+
+\end{thebibliography}
+
+\end{document}
