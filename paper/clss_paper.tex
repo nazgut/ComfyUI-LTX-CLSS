@@ -36,7 +36,7 @@
 \author{Aleksander Majda\\
 }
 
-\date{June 2026}
+\date{June 2026 --- revised July 2026}
 
 \begin{document}
 
@@ -110,6 +110,15 @@ negligible computational overhead.
       diagnostic telemetry (Section~\ref{sec:nodes}).
 \item Empirical validation on a 30-second, 3-scene audio-video generation
       (Section~\ref{sec:experiments}).
+\item A reference-parity multi-modal guider for ComfyUI (split per-modality
+      CFG, modality-isolation guidance, and STG via value-passthrough
+      self-attention skip), including handling of ComfyUI's packed-latent
+      sampling representation (Section~\ref{sec:guider}).
+\item A documented audit trail of two silent-failure defects (unseeded audio
+      noise; packed-latent guidance bypass) with the telemetry that exposed
+      them --- unconditional settings dumps, per-frame origin/layout drift
+      events, and a phase-lock repetition detector
+      (Sections~\ref{sec:erratum}, \ref{sec:failures}).
 \end{enumerate}
 
 %--------------------------------------------------------------------------
@@ -424,25 +433,60 @@ Key differences from Stage 1:
 \subsection{Audio Streaming}
 \label{sec:audio}
 
-Audio and video share the same temporal chunk boundaries.  The audio SLB length
-is derived from the video SLB by preserving the temporal correspondence:
+Audio and video share the same temporal chunk boundaries.  Audio length
+accounting is anchored to \emph{pixel time}: the causal video VAE maps a
+chunk of $\text{new\_lf}$ latent frames to $(\text{new\_lf}-1)\cdot 8+1$
+pixel frames for the first chunk of a sequence and $\text{new\_lf}\cdot 8$
+pixel frames for every continuation chunk.  The audio rate is taken from the
+chunk template, $r = \text{new\_af} / \big((\text{new\_lf}-1)\cdot 8+1\big)$
+audio frames per pixel frame, and the SLB length follows the same rate:
 \begin{equation}
-\text{overlap\_af} = \text{round}\!\left(\text{overlap\_lf} \times \frac{r_a}{r_v}\right)
+\text{overlap\_af} = \text{round}\!\left(\text{overlap\_lf}\cdot 8 \cdot r\right)
 \end{equation}
-where $r_a = 25.0$\,lf/s and $r_v = 3.125$\,lf/s are the audio and video latent
-frame rates.  With $\text{overlap\_lf}=8$, this gives
-$\text{overlap\_af} = \text{round}(8 \times 8.0) = 64$\,audio latent frames.
+With $\text{overlap\_lf}=8$ and the 13-lf/102-af template this gives
+$\text{overlap\_af}=67$.  (An earlier per-chunk accounting ignored the
+causal first-frame discount, undercounting every continuation chunk by
+$\approx0.28$\,s and desynchronising audio from video by $\approx2$\,s over
+seven chunks; the pixel-time ledger above eliminates the drift exactly.)
+The effective video overlap is additionally clamped to $\text{new\_lf}$: the
+SLB can never carry more frames than a chunk produces, and unclamped values
+were measured to silently discard motion at every seam.
 
-\paragraph{Soft energy normalisation.}
-Audio energy tends to drift downward over chunks because each chunk is
-conditioned on a slightly quieter audio overlap (the denoiser contracts the
-dynamic range).  After generating chunk $N$, the new audio frames are blended
-toward the first chunk's RMS energy $E_0$:
-\begin{equation}
-\hat{a}_N = (1-\beta_a)\,a_N + \beta_a\,a_N \cdot \frac{E_0}{\|a_N\|_{\rm rms} + \epsilon}
-\end{equation}
-with $\beta_a=0.30$.  This prevents progressive quietening across the sequence
-while allowing natural per-scene amplitude variation to persist.
+\paragraph{Drift-capped energy anchoring.}
+Un-anchored streaming audio is a divergent loop in both directions: runs were
+measured with RMS growing $+67\%$ and low-mid spectral bands tripling over
+ten chunks.  A per-chunk anchor corrects the new audio's global RMS and
+per-channel DC toward slowly-moving EMA targets whose drift from the
+chunk-1 origin is hard-capped at $\pm\Delta_\sigma$ (the same
+$\pm5\%$ used for the video EMA), before the chunk's tail is fed forward as
+the next SLB/reference.  Anchoring \emph{before} feed-forward is what makes
+the audio SLB safe at any sequence length.  A fixed-forever target was tried
+first and caused repetition (the model re-rendered a stabilised loop); the
+capped EMA restores bounded evolution.  On multi-scene runs the anchor is
+re-baselined at scene changes; this is measurably a ratchet (each re-baseline
+legitimises accumulated loudness creep: $0.599\to0.699\to0.823$ over three
+scenes in one run) and remains a known limitation.
+
+\paragraph{Reference-audio conditioning.}
+Each continuation chunk also receives a reference-audio window
+(\texttt{ref\_audio} tokens at negative temporal RoPE) taken from a rolling
+tail of the accumulated output.  Its length is decoupled from the video
+overlap (default 67\,af $\approx2$\,s; an implicit coupling to
+$\text{overlap\_af}$ starved it at small overlaps and measurably collapsed
+within-chunk audio coherence from 0.91 to 0.27).  A small noise fraction is
+blended into the reference, ramping $0.05$/chunk and capped at $0.10$ (an
+earlier hard-coded $0.35$ cap injected audible hiss).
+
+\paragraph{Context envelope flattening.}
+The fed-forward audio context (SLB tail and reference window) is optionally
+flattened in loudness: each frame is rescaled toward the window-mean RMS with
+per-frame gain clamped to $[0.6, 1.25]$.  Motivation is a measured metronome:
+the audio energy peak locked to the same frame (102/109) for eight consecutive
+chunks --- the crescendo in each fed-forward tail re-seeded the same
+loudness arc every chunk.  Flattening the \emph{context only} (output audio is
+untouched) broke the phase lock in A/B runs.  The gain cap is asymmetric by
+design: an unbounded first version amplified the noise floor of quiet frames
+($\times2.98$ observed) and injected persistent hiss.
 
 \paragraph{Boundary smoothing.}
 At each audio SLB boundary, a linear blend over $\pm2$ audio latent frames is
@@ -453,19 +497,75 @@ which would otherwise be visible as discontinuities in the spectrogram.
 \subsection{ComfyUI Node Integration}
 \label{sec:nodes}
 
-Four custom nodes implement the full pipeline inside ComfyUI:
+Five custom nodes implement the full pipeline inside ComfyUI:
 
 \begin{enumerate}[leftmargin=*,noitemsep]
-\item \textbf{CLSSConfig}: exposes all CLSS hyperparameters
-  ($\tau_c, \beta, \lambda, \Delta_\sigma, F_a$, AdaIN cap).
+\item \textbf{CLSSConfig}: exposes the CLSS hyperparameters worth exposing
+  ($\tau_c, \beta$, overlap); validated internals are fixed.
 \item \textbf{CLSSScenePrompts}: multi-scene text input via \texttt{---} delimiters;
   Gemma-enhanced per scene.  Output is a flat CONDITIONING list with one entry
-  per scene, proportionally assigned to chunks.
+  per scene, proportionally assigned to chunks.  With one prompt per chunk this
+  doubles as a per-chunk \emph{object-identity} anchor (see
+  Section~\ref{sec:limitations}).
 \item \textbf{CLSSStreamingSampler}: Stage 1 streaming sampler.  Accepts any
-  ComfyUI GUIDER/SAMPLER/SIGMAS/NOISE/LATENT combination.
+  ComfyUI GUIDER/SAMPLER/SIGMAS/NOISE/LATENT combination.  Emits an
+  unconditional settings dump, per-chunk telemetry, end-of-run trend
+  summaries with per-chunk localisation, per-frame origin/layout drift event
+  tables, and a phase-lock repetition detector.
 \item \textbf{CLSSStage2}: Stage 2 refinement sampler with consistent per-chunk
-  noise slicing.
+  noise slicing and a decoupled audio-refinement pass.
+\item \textbf{CLSSAVGuiderV2}: reference-parity multi-modal guider
+  (Section~\ref{sec:guider}).  Its predecessor (\textbf{CLSSAVGuider}, a
+  \texttt{sampler\_cfg\_function} patch) is retained but inert on current
+  ComfyUI and warns accordingly.
 \end{enumerate}
+
+All stochastic inputs are seeded: Stage-1 video \emph{and} audio noise are
+pre-generated as full-sequence fields sliced per chunk (distinct yet coherent
+noise per chunk, bit-reproducible runs), and every fallback noise path uses a
+generator derived deterministically from the seed and chunk position.
+
+\subsection{Multi-Modal Guidance and the Packed-Latent Pitfall}
+\label{sec:guider}
+
+The reference pipeline guides each modality independently
+(\texttt{MultiModalGuider}):
+\begin{equation}
+\text{pred} = c + (s_{\text{cfg}}-1)(c-u)
+             + s_{\text{stg}}\,(c-p)
+             + (s_{\text{mod}}-1)(c-m)
+\label{eq:guider}
+\end{equation}
+per modality, followed by a rescale
+$\text{pred} \mathrel{*}= r\,\sigma_c/\sigma_{\text{pred}} + (1-r)$,
+where $u$ is the text-unconditional prediction, $m$ the modality-isolated
+prediction (both audio$\leftrightarrow$video cross-attentions skipped), and
+$p$ the STG-perturbed prediction.  The STG perturbation skips
+\emph{self}-attention in designated blocks (block 28 for LTX-2.3) by
+replacing the attention output with the raw value projection
+($\text{out}=W_V x$, gating and output projection unchanged) --- a
+value-passthrough, not a zero-out.  Defaults follow the reference:
+video cfg 4--4.5, audio cfg 7, modality 3, STG 1 for both modalities,
+rescale 0.7; four transformer passes per step.
+
+\paragraph{The pitfall.}  ComfyUI's \texttt{CFGGuider.sample()} packs nested
+audio-video latents into a \emph{single flat} $[B,1,N_v{+}N_a]$ tensor before
+sampling and unpacks only after.  Any guider that detects the AV case with
+\texttt{isinstance(x, NestedTensor)} inside \texttt{predict\_noise} --- as
+both of our guiders originally did --- silently falls back to plain shared
+CFG on every step.  The failure produced no error and no log line; it was
+exposed by two independent signals: the guider's one-time diagnostic prints
+appeared in no console log, and per-step wall-clock time was invariant
+($8.0$\,s/it) across guidance configurations whose pass counts should have
+differed by $2\times$.  The fix captures the per-modality shapes in
+\texttt{sample()} before packing, detects the packed representation in
+\texttt{predict\_noise}, unpacks each pass output, applies
+Eq.~\eqref{eq:guider} per modality, and repacks.  Verified in situ:
+\texttt{passes/step=4}, non-zero STG/modality difference norms, and step time
+at its honest cost ($8.0\to17.3$\,s/it on 13-lf chunks).  Two engineering
+rules follow: guidance paths must announce which branch is active, loudly and
+unconditionally; and a guidance change that does not change step time did not
+happen.
 
 %--------------------------------------------------------------------------
 \section{Experiments}
@@ -500,8 +600,8 @@ $\lambda$ & 0.10 \\
 $\Delta_\sigma$ & 0.05 \\
 $F_a$ & 5 \\
 $\boldsymbol\gamma$ & $(0.0,\,0.05,\,0.2,\,0.3)$ \\
-Video CFG & 4.5, STG 1.0, modality 3.0 \\
-Audio CFG & 7.0, STG 1.0 \\
+Video CFG & 4.5, STG 1.0, modality 3.0 \emph{(intended; see \S\ref{sec:erratum})} \\
+Audio CFG & 7.0, STG 1.0 \emph{(intended; see \S\ref{sec:erratum})} \\
 Scenes & 3 (one per Stage 1 chunk) \\
 VRAM (GPU) & 15.61\,GB (RTX-class) \\
 \midrule
@@ -510,6 +610,34 @@ Exp.~2 first-frame & Guide image, latent $[1,128,1,11,20]$ (I2V) \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\subsection{Erratum: Guidance Configuration (July 2026 Audit)}
+\label{sec:erratum}
+
+A post-publication audit established three facts that qualify the experiments
+below.  \textbf{(i)~The guidance stack was not active.}  Owing to the
+packed-latent pitfall (Section~\ref{sec:guider}), every ComfyUI run in this
+section executed plain shared CFG at the video scale --- no split audio CFG,
+no modality guidance, no STG, no per-modality rescale --- regardless of the
+values in Table~\ref{tab:config}.  The continuity results below therefore
+measure the CLSS correction stack under \emph{plain CFG}, which if anything
+understates the corrected pipeline.  \textbf{(ii)~Audio noise was unseeded.}
+Stage-1 audio noise was drawn from the global RNG rather than the seed; runs
+were not bit-reproducible, and audio (via joint attention, also video)
+differed across same-seed runs.  Both defects are fixed; Stage-1 noise for
+both modalities is now pre-generated from the seed and sliced per chunk.
+\textbf{(iii)~The anchor bank was diagnostic-only.}  The retrieval-injection
+path of Section~\ref{sec:anchor} exists in the reference library but was not
+wired into the ComfyUI sampler; in these experiments the bank contributed
+telemetry (identity tracking, forced insertions) but no conditioning.
+
+The first run with the full guidance stack verified active (2026-07-11;
+3 chunks, i2v, 13\,lf) was the most stationary measured to date: audio RMS
+plateaued at $0.49$--$0.51$ (versus $0.74$--$0.99$ in unguided runs),
+per-chunk spectral ratios stayed within $0.72$--$1.19$ of the chunk-1
+reference (the flattest spectral drift observed), within-chunk audio
+coherence reached $0.95$--$0.99$, and video boundary similarities held at
+$0.954$--$0.959$ --- at the honest cost of four transformer passes per step.
 
 %--------------------------------------------------------------------------
 \subsection{Experiment 1: Text-to-Video (T2V)}
@@ -906,6 +1034,41 @@ tracking is reduced to comparing against the fixed first-chunk reference, which
 conflates intended scene changes with drift.  Adding an anchor bank to Stage 2
 would allow scene-aware identity tracking during refinement.
 
+\subsection{Measured Failure Modes at Longer Horizons}
+\label{sec:failures}
+
+Extended runs (10 chunks, 43\,s) with per-frame telemetry exposed two
+repetition mechanisms with distinct signatures.
+
+\paragraph{Window-locked audio arcs.}  The audio energy peak locks to the
+same relative window position across chunks: $94\%$ of the window at 13\,lf
+chunks (frame 102/109, eight consecutive chunks) and $98\%$ at 31\,lf chunks
+--- the arc \emph{scales with the window}, implicating the fed-forward
+conditioning geometry.  Context envelope flattening
+(Section~\ref{sec:audio}) breaks the lock; chunk-to-chunk loudness-gesture
+correlation nevertheless remains high ($0.7$--$0.95$), so repetition is
+reduced, not eliminated.
+
+\paragraph{A $\sim$4-second intrinsic video oscillation.}  Coarse scene
+layout departs from the scene reference and partially returns with a
+$\approx4$\,s wall-clock period that is \emph{invariant to chunk length}:
+at 13-lf ($4.3$\,s) chunks the dip lands at new-frame 5--7 in 10/10 chunks
+(appearing seam-locked), while at 31-lf ($9.9$\,s) chunks it appears twice
+per chunk at the same seconds-period.  Context strength (SLB at i2v strength)
+and context length (overlap 3/5/8) were both tested and neither removes it;
+the oscillation appears intrinsic to the model's trained temporal horizon.
+Longer overlap trades the failure shape: at overlap 8 the per-chunk
+return weakens into monotonic scene departure on some contents.
+
+\paragraph{Stage-2 audio seams.}  With decoupled Stage-2 audio refinement,
+a high denoise fraction ($\sigma$-scale $1.0$) re-rolls $\approx45\%$ of
+audio content per window and the re-rolls disagree at every window boundary
+(boundary cosine $0.32$--$0.42$) \emph{regardless} of the audio SLB length
+--- the SLB pins the seam frame, not the style of the re-roll.  At
+denoise $0.4$ the pass polishes instead (seed similarity $0.87$--$0.92$)
+and seams hold at $0.70$--$0.83$.  Rule: high-denoise audio rebuild only as
+a single window; multi-window refinement at $\le0.4$.
+
 %--------------------------------------------------------------------------
 \section{Limitations}
 \label{sec:limitations}
@@ -930,6 +1093,17 @@ of the generated content, prompt adherence, or realism.  Standard quality metric
 (FID, IS, CLIP similarity, human evaluation) would be required to characterise
 the generated video as a content generation system.  High boundary similarity is
 a necessary but not sufficient condition for high video quality.
+
+\paragraph{Object-level identity is unobserved.}
+Every reported metric is computed from mean-pooled channel features or
+low-band spatial maps and is therefore \emph{object-blind}: a vehicle or
+person can be replaced by a different instance across a chunk boundary while
+boundary and identity cosines remain above $0.95$.  This failure class was
+observed perceptually and is invisible to the telemetry.  High-similarity
+readings must not be interpreted as object persistence.  The available
+mitigation is textual: one prompt per chunk via \texttt{CLSSScenePrompts},
+re-describing the persistent objects explicitly.  Object-level tracking
+metrics (detection/re-identification on decoded frames) are future work.
 
 \paragraph{Stability model assumptions.}
 The linear gain model in Section~\ref{sec:stability} assumes that $g$ is
@@ -1005,6 +1179,16 @@ provides sufficient visual grounding to maintain audio coherence when a visual
 reference is present.  A natural extension is to supply a short audio reference
 or visual guide before chunk~1 even in T2V mode, priming the pipeline's
 audio coherence from the start.
+
+The July 2026 audit is itself a result.  Two defects --- unseeded Stage-1
+audio noise and a guidance stack silently disabled by ComfyUI's packed-latent
+sampling representation --- survived weeks of experimentation because both
+failed \emph{silently} and the metrics they corrupted still moved plausibly.
+The telemetry that finally exposed them (unconditional settings dumps,
+one-time guidance-path announcements, and treating wall-clock invariance as
+evidence of a missing pass) is now part of the pipeline, and the
+reference-parity guider (split CFG, modality guidance, STG) is verified
+active; the first fully guided run is the most stationary measured to date.
 
 The ComfyUI node integration with per-chunk diagnostic telemetry supports rapid
 empirical validation of CLSS hyperparameter choices and provides interpretable
