@@ -36,7 +36,7 @@
 \author{Aleksander Majda\\
 }
 
-\date{June 2026 --- revised July 2026}
+\date{July 2026}
 
 \begin{document}
 
@@ -54,24 +54,37 @@ the transformer weights: calibrated context re-noising, per-channel EMA-tracked
 AdaIN, frequency-band soft shrinkage, and a dynamic anchor bank.  CLSS is
 implemented as a ComfyUI custom-node pipeline targeting LTX-2.3 22B (a 44\,GB
 audio-video diffusion transformer) on consumer 16\,GB VRAM hardware via GGUF
-4-bit quantisation and CPU block-streaming.  A two-stage pipeline generates a
-draft video via CLSS streaming and then refines it using a 3-step distilled-LoRA
-schedule at $2\times$ spatial resolution.
+4-bit quantisation and CPU block-streaming.  Generation is driven by a
+reference-parity multi-modal guider (split per-modality classifier-free
+guidance, modality-isolation guidance, and spatiotemporal guidance via a
+value-passthrough self-attention skip) that correctly handles ComfyUI's
+packed audio-video latent representation, and all streaming noise is seeded
+for bit-reproducible runs.  A two-stage pipeline generates a draft
+audio-video via CLSS streaming and then refines it using a 3-step
+distilled-LoRA schedule at $2\times$ spatial resolution.
 
-Two 30-second, 3-scene audio-video experiments are reported: text-to-video (T2V)
-and image-to-video (I2V) generation, both using $\text{new\_lf}=31$,
-$\text{overlap}=8$.  T2V Stage~1 achieves boundary cosine similarities of
-0.9949--0.9950 and intra-chunk similarities of 0.73--0.89;
-Stage~2 refinement achieves 0.984--0.993 boundary and 0.917--0.987 intra
-across five refinement chunks.  I2V achieves comparable boundary continuity
-(0.946--0.950) with lower intra-chunk similarity (0.26--0.59) reflecting the
-more dynamic visual transitions inherent to image-conditioned generation.
-A cross-modal audio observation is apparent: Stage~1 chunk~1 audio coherence
-is $-0.25$ to $-0.34$ in T2V (no visual anchor, no audio SLB) but $+0.998$
-to $+0.999$ in I2V (same audio SLB absence, but with a guide image), indicating
-that visual context constrains audio generation via cross-modal attention in
-the joint audio-video transformer.  Total generation time is approximately
-55--56 minutes per 30-second clip on a single 16\,GB GPU.
+We report matched text-to-video (T2V) and image-to-video (I2V) experiments:
+single-scene, $\approx103$-second clips generated as ten chunks
+($\text{new\_lf}=31$, $\text{overlap}=8$) under an identical seed and the full
+guidance stack active (video CFG 4.0, audio CFG 7.0, modality 3.0, STG 1.0 on
+both modalities at block 28, rescale 0.70; four transformer passes per step),
+differing only in the presence of a guide image.  Stage~1 holds video boundary
+cosine similarity above 0.91 (I2V) and above 0.80 (T2V), with the audio
+streaming buffer honoured at 1.000 at every seam in both runs and the
+drift-capped energy anchor holding audio RMS to a stable floor throughout
+(0.42--0.50 I2V, 0.59--0.78 T2V).  Stage~2 ($2\times$ resolution, 3-step
+distilled refinement, decoupled audio at denoise fraction 0.4) preserves
+Stage~1 structure in both runs, with per-window fidelity and video seam
+similarity in the same ranges.  Comparing the two runs resolves a hypothesis
+the I2V run alone could not test: whether the guide image is responsible for
+chunk-1 audio coherence and for the phase-lock observed in repetition
+diagnostics.  It is not --- T2V achieves comparable chunk-1 audio coherence
+with no visual anchor and is consistently the \emph{less} phase-locked of the
+two runs, the opposite of what a stabilising-anchor account predicts.  T2V does
+show one failure mode absent from I2V: audio top-frequency energy grows to
+$2.1$--$2.65\times$ its chunk-1 reference by chunk~7, untouched by any current
+correction.  Total generation time is approximately four hours per
+$\approx100$-second clip in either mode on a single 16\,GB GPU.
 \end{abstract}
 
 %--------------------------------------------------------------------------
@@ -106,19 +119,22 @@ negligible computational overhead.
 \item A memory-efficient two-stage pipeline for LTX-2.3 22B on 16\,GB VRAM
       using GGUF 4-bit quantisation and CPU block-streaming
       (Section~\ref{sec:impl}).
-\item ComfyUI custom nodes implementing the full pipeline with per-chunk
-      diagnostic telemetry (Section~\ref{sec:nodes}).
-\item Empirical validation on a 30-second, 3-scene audio-video generation
-      (Section~\ref{sec:experiments}).
 \item A reference-parity multi-modal guider for ComfyUI (split per-modality
       CFG, modality-isolation guidance, and STG via value-passthrough
-      self-attention skip), including handling of ComfyUI's packed-latent
-      sampling representation (Section~\ref{sec:guider}).
-\item A documented audit trail of two silent-failure defects (unseeded audio
-      noise; packed-latent guidance bypass) with the telemetry that exposed
-      them --- unconditional settings dumps, per-frame origin/layout drift
-      events, and a phase-lock repetition detector
-      (Sections~\ref{sec:erratum}, \ref{sec:failures}).
+      self-attention skip) that correctly handles ComfyUI's packed audio-video
+      latent representation (Section~\ref{sec:guider}).
+\item ComfyUI custom nodes implementing the full pipeline with seeded,
+      bit-reproducible streaming noise and per-chunk reproducibility telemetry:
+      unconditional settings dumps, per-frame origin/layout drift event tables,
+      and a phase-lock repetition detector (Sections~\ref{sec:nodes},
+      \ref{sec:failures}).
+\item Matched $\approx103$-second T2V and I2V generations, identical seed and
+      guidance stack, streamed as ten chunks each under the active guidance
+      stack, isolating the effect of visual conditioning on audio coherence and
+      phase-lock, and characterising the residual repetition mechanisms at this
+      horizon --- including an audio high-frequency growth failure mode present
+      only without a guide image (Sections~\ref{sec:experiments},
+      \ref{sec:failures}).
 \end{enumerate}
 
 %--------------------------------------------------------------------------
@@ -548,40 +564,49 @@ value-passthrough, not a zero-out.  Defaults follow the reference:
 video cfg 4--4.5, audio cfg 7, modality 3, STG 1 for both modalities,
 rescale 0.7; four transformer passes per step.
 
-\paragraph{The pitfall.}  ComfyUI's \texttt{CFGGuider.sample()} packs nested
-audio-video latents into a \emph{single flat} $[B,1,N_v{+}N_a]$ tensor before
-sampling and unpacks only after.  Any guider that detects the AV case with
-\texttt{isinstance(x, NestedTensor)} inside \texttt{predict\_noise} --- as
-both of our guiders originally did --- silently falls back to plain shared
-CFG on every step.  The failure produced no error and no log line; it was
-exposed by two independent signals: the guider's one-time diagnostic prints
-appeared in no console log, and per-step wall-clock time was invariant
-($8.0$\,s/it) across guidance configurations whose pass counts should have
-differed by $2\times$.  The fix captures the per-modality shapes in
-\texttt{sample()} before packing, detects the packed representation in
-\texttt{predict\_noise}, unpacks each pass output, applies
-Eq.~\eqref{eq:guider} per modality, and repacks.  Verified in situ:
-\texttt{passes/step=4}, non-zero STG/modality difference norms, and step time
-at its honest cost ($8.0\to17.3$\,s/it on 13-lf chunks).  Two engineering
-rules follow: guidance paths must announce which branch is active, loudly and
-unconditionally; and a guidance change that does not change step time did not
-happen.
+\paragraph{The packed-latent representation.}  ComfyUI's
+\texttt{CFGGuider.sample()} packs nested audio-video latents into a
+\emph{single flat} $[B,1,N_v{+}N_a]$ tensor before sampling and unpacks only
+after.  A guider that tries to detect the audio-video case with
+\texttt{isinstance(x, NestedTensor)} inside \texttt{predict\_noise} therefore
+never sees a nested tensor and falls back to plain shared CFG --- and it does
+so silently, producing no error and no log line.  The guider must instead
+capture the per-modality shapes in \texttt{sample()} \emph{before} packing,
+detect the packed $[B,1,N]$ representation in \texttt{predict\_noise}, unpack
+each pass output, apply Eq.~\eqref{eq:guider} per modality, and repack.  Two
+diagnostics guard against a silent regression: the guider announces the active
+branch and its pass count once per chunk (\texttt{passes/step=4} for the
+four-pass configuration), and it logs the STG and modality difference norms so
+a zero-valued (inert) perturbation is visible immediately.  A useful invariant
+follows from the pass count: because each guidance term costs a transformer
+pass, a guidance configuration that does not change per-step wall-clock time is
+not actually running --- on 13-lf chunks the four-pass stack costs
+$\approx17.3$\,s/it against $\approx8.0$\,s/it for plain CFG.  Two engineering
+rules generalise: guidance paths must announce which branch is active, loudly
+and unconditionally; and a guidance change that does not change step time did
+not happen.
 
 %--------------------------------------------------------------------------
 \section{Experiments}
 \label{sec:experiments}
 %--------------------------------------------------------------------------
 
-Two generation experiments are reported, both using the same CLSS configuration
-but differing in the first-frame conditioning: Experiment~1 uses text-to-video
-(T2V) generation with no image prior; Experiment~2 uses image-to-video (I2V)
-generation conditioned on a single guide frame ($1\times11\times20$ latent).
+Two generation experiments share the same CLSS configuration, seed, and active
+guidance stack but differ in the first-frame conditioning: a text-to-video
+(T2V) run with no image prior (Section~\ref{sec:exp_t2v}), and an
+image-to-video (I2V) run conditioned on a single guide frame
+($1\times11\times20$ latent, Section~\ref{sec:exp_i2v}).  Both stream ten
+Stage-1 chunks ($\text{new\_lf}=31$, $\text{overlap}=8$) to 310 latent frames
+($\approx103$\,s) and refine through the same seven-window Stage~2 pass.
 
 \subsection{Shared Configuration}
 
 \begin{table}[H]
 \centering
-\caption{Shared configuration for both experiments.}
+\caption{Shared configuration.  Guidance values are those actually active during
+sampling (verified by the guider's per-chunk \texttt{passes/step} and
+difference-norm telemetry, Section~\ref{sec:guider}).  The Stage-2 geometry is
+selected automatically from the VRAM token budget.}
 \label{tab:config}
 \begin{tabular}{ll}
 \toprule
@@ -589,337 +614,456 @@ Parameter & Value \\
 \midrule
 Model & LTX-2.3 22B (Q4\_K\_S GGUF) \\
 Resolution & $704\times512$ (Stage 1), $1408\times1024$ (Stage 2) \\
-Frames & 93 latent = $\approx30$\,s @ 25\,fps \\
-Stage 1 chunks & 3, $\text{new\_lf}=31$, $\text{overlap}=8$ \\
-Stage 1 steps & 20 \\
-Stage 2 chunks & 5, $\text{fpc}=21$, $\text{overlap}=8$ \\
-Stage 2 steps & 3 (distilled) \\
 $\tau_c$ & 0.05 \\
 $\beta$ & 0.40 \\
 $\lambda$ & 0.10 \\
 $\Delta_\sigma$ & 0.05 \\
-$F_a$ & 5 \\
+$F_a$ & 3 (auto, for 10 chunks) \\
 $\boldsymbol\gamma$ & $(0.0,\,0.05,\,0.2,\,0.3)$ \\
-Video CFG & 4.5, STG 1.0, modality 3.0 \emph{(intended; see \S\ref{sec:erratum})} \\
-Audio CFG & 7.0, STG 1.0 \emph{(intended; see \S\ref{sec:erratum})} \\
-Scenes & 3 (one per Stage 1 chunk) \\
+Video guidance & CFG 4.0, STG 1.0, modality 3.0 \\
+Audio guidance & CFG 7.0, STG 1.0, modality 3.0 \\
+STG block / rescale & 28 / 0.70 (four passes/step) \\
+Stage 1 steps & 20 \\
+Stage 2 steps & 3 (distilled), denoise (audio) 0.4 \\
 VRAM (GPU) & 15.61\,GB (RTX-class) \\
 \midrule
-Exp.~1 first-frame & Text only (T2V) \\
-Exp.~2 first-frame & Guide image, latent $[1,128,1,11,20]$ (I2V) \\
+T2V first-frame & Text only \\
+I2V first-frame & Guide image, latent $[1,128,1,11,20]$ \\
+Stage 1 (both) & 10 chunks, $\text{new\_lf}=31$, $\text{overlap}=8$, 1 scene \\
+Stage 2 (both) & 7 windows, $\text{fpc}=45$, $\text{overlap}=15$ (decoupled audio) \\
 \bottomrule
 \end{tabular}
 \end{table}
-
-\subsection{Erratum: Guidance Configuration (July 2026 Audit)}
-\label{sec:erratum}
-
-A post-publication audit established three facts that qualify the experiments
-below.  \textbf{(i)~The guidance stack was not active.}  Owing to the
-packed-latent pitfall (Section~\ref{sec:guider}), every ComfyUI run in this
-section executed plain shared CFG at the video scale --- no split audio CFG,
-no modality guidance, no STG, no per-modality rescale --- regardless of the
-values in Table~\ref{tab:config}.  The continuity results below therefore
-measure the CLSS correction stack under \emph{plain CFG}, which if anything
-understates the corrected pipeline.  \textbf{(ii)~Audio noise was unseeded.}
-Stage-1 audio noise was drawn from the global RNG rather than the seed; runs
-were not bit-reproducible, and audio (via joint attention, also video)
-differed across same-seed runs.  Both defects are fixed; Stage-1 noise for
-both modalities is now pre-generated from the seed and sliced per chunk.
-\textbf{(iii)~The anchor bank was diagnostic-only.}  The retrieval-injection
-path of Section~\ref{sec:anchor} exists in the reference library but was not
-wired into the ComfyUI sampler; in these experiments the bank contributed
-telemetry (identity tracking, forced insertions) but no conditioning.
-
-The first run with the full guidance stack verified active (2026-07-11;
-3 chunks, i2v, 13\,lf) was the most stationary measured to date: audio RMS
-plateaued at $0.49$--$0.51$ (versus $0.74$--$0.99$ in unguided runs),
-per-chunk spectral ratios stayed within $0.72$--$1.19$ of the chunk-1
-reference (the flattest spectral drift observed), within-chunk audio
-coherence reached $0.95$--$0.99$, and video boundary similarities held at
-$0.954$--$0.959$ --- at the honest cost of four transformer passes per step.
 
 %--------------------------------------------------------------------------
 \subsection{Experiment 1: Text-to-Video (T2V)}
 \label{sec:exp_t2v}
 %--------------------------------------------------------------------------
 
-\subsubsection{Stage 1 Results}
+No image is provided; Stage~1 chunk~1 begins from pure noise conditioned on the
+text prompt alone.  The clip is a single prompted scene streamed as ten chunks
+($\text{new\_lf}=31$, $\text{overlap}=8$), assembling to 310 latent frames
+($\approx103$\,s), under the identical seed and guidance stack as the I2V run
+(Table~\ref{tab:config}).
 
-Table~\ref{tab:s1_metrics} reports per-chunk metrics.  Chunk 1 is the reference;
-subsequent chunks compare against the anchor bank entry seeded from chunk 1's
-last frame (frame 30).
+\subsubsection{Guidance Activity}
+
+As in I2V, every chunk shows \texttt{passes/step=4} with non-zero STG and
+modality difference norms (Table~\ref{tab:t2v_guidance}).  Chunk~1's audio
+modality term is again the outlier ($m_{\rm aud}=75.8$ versus $5.9$--$9.6$
+thereafter) --- the same mechanism as I2V (no audio SLB or reference window on
+the first chunk), now confirmed independent of the guide image.
 
 \begin{table}[H]
 \centering
-\caption{T2V Stage 1 per-chunk metrics.  Identity\_sim for chunk 2 nearly equals
-boundary\_sim because both compare the same pair of frames (anchor at frame 30 vs
-first frame of chunk 2), confirming SLB and anchor bank agree.}
-\label{tab:s1_metrics}
+\caption{T2V Stage 1 guidance difference norms (step 1 of each chunk).}
+\label{tab:t2v_guidance}
 \begin{tabular}{ccccc}
 \toprule
-Chunk & Boundary & Intra & Identity & $\rho_{\rm loop}$ \\
- & sim$\uparrow$ & sim$\uparrow$ & sim$\uparrow$ & \\
+Chunk & STG (vid) & STG (aud) & Mod (vid) & Mod (aud) \\
 \midrule
-1/3 & N/A & 0.7333 & 1.0000 (ref) & 0.570 \\
-2/3 & 0.9949 & 0.7375 & 0.9949 & 0.570 \\
-3/3 & 0.9950 & 0.8861 & 0.7224 & 0.570 \\
+1  & 160.1 & 32.7 & 26.3 & 75.8 \\
+2  & 127.7 &  8.9 & 44.6 &  7.5 \\
+3  & 168.7 &  8.1 & 46.6 &  7.7 \\
+4  & 141.1 &  6.7 & 40.9 &  9.6 \\
+5  & 212.1 &  9.0 & 45.8 &  6.0 \\
+6  & 185.3 & 10.0 & 47.2 &  5.9 \\
+7  & 134.8 &  9.4 & 50.0 &  5.9 \\
+8  & 147.4 &  7.8 & 43.1 &  8.5 \\
+9  & 203.8 & 11.0 & 49.2 &  6.5 \\
+10 & 270.9 &  8.6 & 56.7 &  5.8 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Boundary similarities (0.9949, 0.9950) are nearly identical across both
-transitions, confirming that the SLB with $\tau_c=0.05$ reliably locks the
-visual hand-off regardless of chunk content.  Intra-chunk similarities
-(0.73--0.89) reflect the natural within-chunk variation expected for
-$\text{new\_lf}=31$ spanning approximately 10\,s per chunk with three distinct
-scenes.  The identity\_sim drop to 0.7224 by chunk 3 reflects two accumulated
-scene transitions over 62 latent frames, consistent with intended multi-scene
-content rather than model drift.
-
-Table~\ref{tab:s1_adain} shows AdaIN corrections and spectral band gains.
-Chunk 1 receives no correction (EMA uninitialised; it is the reference).
-Chunk 2 receives a small upward mean shift ($+0.007$) and moderate std lift
-($+0.044$).  By chunk 3, the EMA has largely converged, and spectral shrinkage
-takes over: band~3 gain falls to 0.9377, indicating that scene~3's
-high-frequency latent energy had grown $\approx6.7\%$ above the EMA reference
-established by scenes 1--2.
+\subsubsection{Stage 1 Results}
 
 \begin{table}[H]
 \centering
-\caption{T2V Stage 1 AdaIN corrections and band gains.
-Band 0 is the DC band ($\gamma_0=0$, gain$\equiv1$).}
-\label{tab:s1_adain}
+\caption{T2V Stage 1 per-chunk video metrics (10 chunks).}
+\label{tab:t2v_s1_metrics}
+\begin{tabular}{ccccc}
+\toprule
+Chunk & Boundary sim$\uparrow$ & Intra sim$\uparrow$ & Identity sim & $\rho_{\rm loop}$ \\
+\midrule
+1/10  & N/A     & 0.4043 & 1.0000 (ref) & 0.570 \\
+2/10  & 0.7974  & 0.1875 & 0.7974 & 0.570 \\
+3/10  & 0.8993  & 0.3824 & 0.3824 & 0.570 \\
+4/10  & 0.8226  & 0.2927 & 0.8226 & 0.570 \\
+5/10  & 0.9559  & 0.2950 & 0.9559 & 0.570 \\
+6/10  & 0.9324  & 0.2156 & 0.7823 & 0.570 \\
+7/10  & 0.8330  & 0.1957 & 0.4485 & 0.570 \\
+8/10  & 0.8725  & 0.3554 & 0.8725 & 0.570 \\
+9/10  & 0.8422  & 0.3186 & 0.7492 & 0.570 \\
+10/10 & 0.9677  & 0.6978 & 0.7403 & 0.570 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Without a guide image, video boundary continuity is weaker and more variable
+than I2V: it ranges $0.797$--$0.968$ (versus I2V's $0.910$--$0.967$), with its
+floor again at chunk~2 --- the same first SLB-conditioned hand-off --- but
+$11$ points lower than I2V's floor at the identical seam.  Origin similarity to
+the scene reference decays much further over the run ($0.216\to0.108$, range
+$0.141$, versus I2V's $0.259\to0.242$, range $0.106$): with nothing pinning the
+opening frame, content wanders farther from where it started.  Identity
+similarity to the anchor bank also dips lower, to $0.382$ at chunk~3 (versus
+I2V's floor of $0.747$).  Unlike I2V, where the largest structural events all
+clustered at the chunk~1$\to$2 seam, T2V's largest coarse-layout drops are
+spread across the whole run --- at chunks 1, 3, 6, 7, 9, and 10, with the single
+deepest ($\Delta=-0.382$) landing near the very end (chunk~10, $t\approx98$\,s)
+rather than at the first seam.  Origin-similarity drops do still concentrate at
+chunk~2 (five of the six largest events), and that single deepest origin event
+($\Delta=-0.189$) is if anything slightly larger than I2V's equivalent
+($\Delta=-0.162$) at the same seam.
+
+\begin{table}[H]
+\centering
+\caption{T2V Stage 1 AdaIN corrections and band gains.}
+\label{tab:t2v_s1_adain}
 \begin{tabular}{ccccccc}
 \toprule
 Chunk & $\Delta\mu$ & $\Delta\sigma$ & $g_0$ & $g_1$ & $g_2$ & $g_3$ \\
 \midrule
-1 & $+0.000$ & $+0.000$ & 1.0000 & 1.0000 & 1.0000 & 1.0000 \\
-2 & $+0.007$ & $+0.044$ & 1.0000 & 0.9997 & 0.9917 & 0.9946 \\
-3 & $+0.003$ & $+0.007$ & 1.0000 & 0.9962 & 0.9659 & 0.9377 \\
+1  & $+0.0000$ & $+0.0000$ & 1.0000 & 1.0000 & 1.0000 & 1.0000 \\
+2  & $+0.0084$ & $-0.0051$ & 1.0000 & 0.9995 & 0.9984 & 0.9966 \\
+3  & $+0.0027$ & $-0.0445$ & 1.0000 & 0.9939 & 0.9725 & 0.9573 \\
+4  & $+0.0034$ & $-0.0330$ & 1.0000 & 0.9971 & 0.9951 & 0.9769 \\
+5  & $-0.0022$ & $-0.0634$ & 1.0000 & 0.9922 & 0.9679 & 0.9468 \\
+6  & $+0.0128$ & $-0.0405$ & 1.0000 & 0.9972 & 0.9858 & 0.9697 \\
+7  & $-0.0050$ & $-0.0350$ & 1.0000 & 0.9958 & 0.9909 & 0.9786 \\
+8  & $+0.0058$ & $-0.0222$ & 1.0000 & 0.9980 & 0.9924 & 0.9815 \\
+9  & $+0.0037$ & $-0.0334$ & 1.0000 & 0.9977 & 0.9829 & 0.9539 \\
+10 & $+0.0015$ & $-0.0298$ & 1.0000 & 0.9988 & 0.9956 & 0.9857 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The anchor bank retains one entry throughout (bank$\_$size$=1$, frame 30).
-Chunk 2 reaches last\_frame\_max\_sim$=0.743$ (streak$=1$), but persistence
-requires $P=2$ consecutive sub-threshold chunks before a new anchor is committed.
-Chunk 3 returns above threshold (sim$=0.802$, streak resets), so no second
-anchor is committed.
+Every T2V chunk receives a \emph{downward} std correction ($\Delta\sigma<0$
+throughout), in contrast to I2V's mixed-sign pattern (Table~\ref{tab:i2v_s1_adain}):
+without an image-conditioned first chunk to compress toward, each text-only
+chunk's raw std runs slightly hot relative to the EMA reference and AdaIN
+consistently pulls it back down.  Spectral shrinkage is correspondingly more
+active than in I2V, with band-3 gains regularly in the $0.95$--$0.96$ range
+(vs.\ I2V's mostly $\geq0.98$) and a low of $0.9468$ at chunk~5.
+
+The anchor bank grows identically to I2V, from 1 to 5 entries at the same
+frame positions (bank\_frame\_ids $=[30,\,92,\,123,\,216,\,309]$): because the
+bank's forced-insertion cadence ($F_a=3$) is driven by chunk position, not
+content, the two runs --- sharing chunk boundaries and seed --- produce the
+same growth schedule despite entirely different video content.
+
+\subsubsection{Stage 1 Audio}
+\label{sec:t2v_audio}
+
+\begin{table}[H]
+\centering
+\caption{T2V Stage 1 per-chunk audio metrics.}
+\label{tab:aud_t2v}
+\begin{tabular}{ccccccc}
+\toprule
+Chunk & WC start & WC end & env\_corr & RMS & Bnd sim & SLB \\
+\midrule
+1  & 0.948 & 0.969 & ---    & 0.775 & N/A    & N/A   \\
+2  & 0.977 & 0.952 & $-$0.273 & 0.723 & 0.9496 & 1.000 \\
+3  & 0.927 & 0.915 & 0.040  & 0.605 & 0.9658 & 1.000 \\
+4  & 0.883 & 0.901 & 0.350  & 0.565 & 0.9771 & 1.000 \\
+5  & 0.942 & 0.925 & 0.564  & 0.630 & 0.9658 & 1.000 \\
+6  & 0.934 & 0.907 & 0.913  & 0.613 & 0.9699 & 1.000 \\
+7  & 0.875 & 0.854 & $-$0.486 & 0.600 & 0.9638 & 1.000 \\
+8  & 0.951 & 0.948 & $-$0.342 & 0.613 & 0.9782 & 1.000 \\
+9  & 0.942 & 0.927 & 0.789  & 0.611 & 0.9635 & 1.000 \\
+10 & 0.789 & 0.904 & 0.847  & 0.591 & 0.9731 & 1.000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Chunk~1 audio, with no guide image and no audio buffer, is already coherent
+(within-chunk $0.948\to0.969$) --- closely matching I2V's chunk~1 coherence
+($0.805\to0.985$) rather than collapsing.  This resolves the comparison deferred
+in Section~\ref{sec:i2v_audio}: the guide image is \emph{not} the source of
+chunk-1 audio coherence, since T2V achieves comparable coherence with no visual
+anchor at all.  The seeded Stage-1 audio noise field, shared by both runs, is
+the more likely explanation; chunk-1 audio coherence here reflects the audio
+generation process itself rather than cross-modal grounding.  Audio boundary
+similarity is high throughout ($0.950$--$0.978$), even better than I2V's
+$0.910$--$0.950$.  The absolute loudness level is also substantially higher
+than I2V's ($0.59$--$0.78$ RMS versus $0.42$--$0.50$), and the drift-capped
+anchor again holds it: the EMA target settles at $\text{ema\_rms}\approx0.743$
+from chunk~3 onward and every raw chunk RMS stays close to that floor.
+
+The loudness-envelope correlation is qualitatively different from I2V.  Where
+I2V's env\_corr climbs smoothly into a $0.77$--$0.95$ lock from chunk~3 onward,
+T2V's swings between strongly negative ($-0.49$, $-0.34$, $-0.27$) and strongly
+positive ($0.91$, 0.85, $0.79$) values with no monotonic settling --- the
+phase-lock detector confirms this is looser, not tighter: the audio energy peak
+covers only $3/10$ chunks within $\pm1$ of its mode (versus I2V's $5/10$), and
+the coarse video-layout argmin covers only $2/10$ (versus I2V's $4/10$).  Taken
+together with the chunk-1 audio result above, the guide image appears to
+correlate with \emph{more} metronomic repetition, not less --- the opposite of
+a naive "visual anchor stabilises everything" hypothesis.  This is examined
+further in Section~\ref{sec:failures}.
 
 \subsubsection{Stage 2 Results}
 
 \begin{table}[H]
 \centering
-\caption{T2V Stage 2 per-chunk metrics (5 chunks, $\text{fpc}=21$).
-Identity\_sim compares against Stage 2 chunk~1's first frame; the 0.41--0.52
-plateau reflects 3 distinct scenes rather than model instability.}
-\label{tab:s2_metrics}
-\begin{tabular}{ccccc}
+\caption{T2V Stage 2 per-window metrics (7 windows).}
+\label{tab:t2v_s2_metrics}
+\begin{tabular}{ccccccc}
 \toprule
-Chunk & Frames (lat) & Boundary sim$\uparrow$ & Intra sim$\uparrow$ & Identity sim$\uparrow$ \\
+Window & Bnd sim$\uparrow$ & Intra sim & Fid first & Fid last & Aud\_bnd \\
 \midrule
-1/5 & 0--21 & N/A & 0.4797 & 1.0000 (ref) \\
-2/5 & 21--42 & 0.9928 & 0.9870 & 0.4798 \\
-3/5 & 42--63 & 0.9839 & 0.9749 & 0.5204 \\
-4/5 & 63--84 & 0.9856 & 0.9355 & 0.4120 \\
-5/5 & 84--93 & 0.9904 & 0.9174 & 0.4310 \\
+1/7 & N/A    & $-$0.2311 & 0.9014 & 0.9269 & N/A    \\
+2/7 & 0.8362 & 0.5186 & 0.9636 & 0.9469 & 0.7539 \\
+3/7 & 0.9560 & 0.2844 & 0.9490 & 0.9572 & 0.8711 \\
+4/7 & 0.9401 & 0.4147 & 0.9334 & 0.9460 & 0.8003 \\
+5/7 & 0.9523 & 0.4510 & 0.9478 & 0.9580 & 0.8051 \\
+6/7 & 0.8668 & 0.6114 & 0.9247 & 0.9329 & 0.8456 \\
+7/7 & 0.8288 & 0.2344 & 0.9497 & 0.7800 & 0.8440 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Stage 2 boundary similarities (0.984--0.993) confirm smooth transitions at
-all four chunk boundaries.  Intra-chunk similarities are substantially higher
-than Stage 1 (0.917--0.987 for chunks 2--5 vs 0.73--0.89), as Stage 2 is
-anchored to the S1 upscaled latent and requires only 3 refinement steps.
-The low first-chunk intra similarity (0.4797) reflects the absence of SLB
-overlap for Stage 2 chunk 1 and the inherent scene variation already present
-in Stage 1 scene 1.
-
-The full refined video latent has shape $[1,128,93,22,40]$, mean$=0.0293$,
-std$=0.9970$, no NaN/Inf.  The assembled audio std (0.916) is substantially
-higher than the Stage 1 audio std (0.650), confirming that the distilled
-refinement actively reshapes the audio distribution.
-
-\subsubsection{Audio Coherence}
-
-\begin{table}[H]
-\centering
-\caption{T2V within-chunk audio similarity (cosine, three sequential segment pairs).}
-\label{tab:aud_s1}
-\begin{tabular}{cccc}
-\toprule
-Stage & Chunk & Seg 1$\to$2 & Seg 2$\to$3 \\
-\midrule
-S1 & 1/3 & $-0.254$ & $-0.337$ \\
-S1 & 2/3 & $+0.940$ & $+0.814$ \\
-S1 & 3/3 & $+0.990$ & $+0.987$ \\
-\midrule
-S2 & 1/5 & $-0.469$ & $+0.901$ \\
-S2 & 2/5 & $-0.044$ & $+0.374$ \\
-S2 & 3/5 & $+0.659$ & $+0.305$ \\
-S2 & 4/5 & $+0.956$ & $+0.940$ \\
-S2 & 5/5 & $+0.911$ & $+0.913$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-Stage 1 chunk~1 audio is strongly anti-correlated ($-0.254 \to -0.337$),
-a consequence of generating from pure noise with no audio SLB and no strong
-visual prior.  Once the audio SLB activates at chunk~2, coherence jumps
-to $0.940 \to 0.814$ and reaches $0.990 \to 0.987$ by chunk~3.
-
-Stage 2 audio follows the same causal pattern: the first two chunks show
-mixed coherence (reflecting that S2 inherits the incoherent S1 chunk~1 audio),
-while chunks 4--5 reach $0.91$--$0.96$ as the audio SLB accumulates refined
-context.
+Window~1's intra similarity is \emph{negative} ($-0.231$), sharply unlike I2V's
+positive $0.610$ for the same window: the unanchored T2V chunk~1 (Table~\ref{tab:t2v_s1_metrics}, intra $0.404$) carries into Stage~2 as a first
+window whose start and end frames are anti-correlated, whereas I2V's guide
+image keeps its first window internally coherent.  From window~2 onward video
+seam continuity behaves similarly to I2V ($0.83$--$0.96$, weakest at
+windows~2 and~7).  Fidelity to the Stage-1 latent shows the same end-of-run
+erosion as I2V, bottoming at an almost identical value in the final window
+($0.780$ versus I2V's $0.788$) --- the softening in the last $\approx15$\,s
+appears to be a Stage-2 property largely independent of the conditioning mode.
+The decoupled audio pass, however, seams noticeably \emph{better} than I2V here
+($0.754$--$0.844$ versus I2V's $0.594$--$0.721$), worst again at the first seam
+(15\,s) --- consistent with the higher raw audio boundary similarity already
+seen in Stage~1 (Table~\ref{tab:aud_t2v}).
 
 %--------------------------------------------------------------------------
 \subsection{Experiment 2: Image-to-Video (I2V)}
 \label{sec:exp_i2v}
 %--------------------------------------------------------------------------
 
-In this experiment a single guide image is encoded to a latent of shape
-$[1,128,1,11,20]$ and provided as first-frame conditioning to Stage~1
-chunk~1.  All CLSS hyperparameters are identical to Experiment~1.
+A single guide image is encoded to a latent of shape $[1,128,1,11,20]$ and
+provided as first-frame conditioning to Stage~1 chunk~1.  The clip is a single
+prompted scene streamed as ten chunks ($\text{new\_lf}=31$, $\text{overlap}=8$),
+assembling to 310 latent frames ($\approx103$\,s).  All CLSS hyperparameters and
+the guidance stack are those of Table~\ref{tab:config}.
+
+\subsubsection{Guidance Activity}
+
+The guider emits \texttt{passes/step=4} and its STG and modality difference
+norms once per chunk (Table~\ref{tab:i2v_guidance}); both stay well away from
+zero on every chunk, so no step fell back to plain shared CFG.  Chunk~1 is an
+outlier on the audio modality term ($m_{\rm aud}=72.3$ versus $5.2$--$6.4$
+thereafter): chunk~1 has neither an audio SLB nor a reference-audio window, so
+the modality-isolated audio prediction has nothing to reconcile against and
+diverges further from the joint prediction; once conditioned, every later chunk
+collapses to a tight band.
+
+\begin{table}[H]
+\centering
+\caption{I2V Stage 1 guidance difference norms (step 1 of each chunk).
+STG measures the self-attention-skip perturbation; modality measures the
+cross-attention-skip perturbation.  All non-zero $\Rightarrow$ guidance active.}
+\label{tab:i2v_guidance}
+\begin{tabular}{ccccc}
+\toprule
+Chunk & STG (vid) & STG (aud) & Mod (vid) & Mod (aud) \\
+\midrule
+1  & 317.9 & 26.7 & 47.9 & 72.3 \\
+2  & 126.0 &  8.5 & 36.9 &  5.4 \\
+3  & 167.3 & 10.7 & 39.0 &  6.2 \\
+4  & 186.1 &  8.6 & 42.0 &  5.6 \\
+5  & 204.1 &  8.3 & 41.2 &  5.2 \\
+6  & 218.0 &  8.6 & 55.8 &  5.5 \\
+7  & 241.5 & 10.1 & 44.8 &  5.6 \\
+8  & 261.4 & 10.4 & 65.2 &  5.5 \\
+9  & 231.8 & 10.7 & 47.2 &  6.4 \\
+10 & 190.5 &  9.4 & 69.6 &  6.1 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \subsubsection{Stage 1 Results}
 
 \begin{table}[H]
 \centering
-\caption{I2V Stage 1 per-chunk metrics.}
+\caption{I2V Stage 1 per-chunk video metrics (10 chunks).  Boundary\_sim
+compares the last overlap frame of the previous chunk against the first new
+frame; identity\_sim compares the chunk against its nearest anchor-bank entry.}
 \label{tab:i2v_s1_metrics}
 \begin{tabular}{ccccc}
 \toprule
-Chunk & Boundary sim$\uparrow$ & Intra sim$\uparrow$ & Identity sim$\uparrow$ & $\rho_{\rm loop}$ \\
+Chunk & Boundary sim$\uparrow$ & Intra sim$\uparrow$ & Identity sim & $\rho_{\rm loop}$ \\
 \midrule
-1/3 & N/A & 0.2649 & 1.0000 (ref) & 0.570 \\
-2/3 & 0.9495 & 0.5538 & 0.9495 & 0.570 \\
-3/3 & 0.9464 & 0.5904 & 0.7638 & 0.570 \\
+1/10  & N/A     & 0.6829 & 1.0000 (ref) & 0.570 \\
+2/10  & 0.9097  & 0.6562 & 0.9097 & 0.570 \\
+3/10  & 0.9546  & 0.8310 & 0.8310 & 0.570 \\
+4/10  & 0.9513  & 0.8094 & 0.9513 & 0.570 \\
+5/10  & 0.9613  & 0.6755 & 0.9613 & 0.570 \\
+6/10  & 0.9599  & 0.5393 & 0.7466 & 0.570 \\
+7/10  & 0.9477  & 0.6978 & 0.8103 & 0.570 \\
+8/10  & 0.9300  & 0.7294 & 0.9300 & 0.570 \\
+9/10  & 0.9657  & 0.9020 & 0.8748 & 0.570 \\
+10/10 & 0.9669  & 0.8352 & 0.8427 & 0.570 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Boundary continuity remains high (0.9495, 0.9464), demonstrating CLSS
-correctness under image conditioning.  Intra-chunk similarities (0.26--0.59)
-are lower than T2V (0.73--0.89): this is expected, as I2V mode generates
-video that must travel from a specific fixed first frame through the scene
-narrative, producing more within-chunk visual change than unconstrained T2V.
-Chunk~1's intra similarity of 0.2649 (vs 0.7333 in T2V) directly reflects
-this: the model starts at the guide image and moves significantly away from
-it over 31 latent frames.
+Video boundary continuity holds between 0.910 and 0.967 across all nine chunk
+transitions, with the floor at chunk~2 --- the first SLB-conditioned hand-off,
+between the unconditioned chunk~1 and its first continuation.  The largest
+structural events of the whole run cluster at exactly this seam
+($\approx10.3$--$10.7$\,s): the run's single deepest coarse-layout drop
+($\Delta=-0.332$) and three of its four largest per-frame origin-similarity
+drops all land at the chunk~1$\to$2 boundary.  Global origin similarity to the
+scene reference is nonetheless contained over the full run
+($0.259\to0.242$, range $0.106$), in contrast to the monotonic walk-away drift
+seen at wider overlaps in earlier open-loop testing.  Identity similarity to the
+anchor bank erodes gradually ($0.910\to0.843$) with a local minimum of $0.747$
+at chunk~6, indicating some content departure from the banked keyframes without
+runaway divergence.
 
 \begin{table}[H]
 \centering
-\caption{I2V Stage 1 AdaIN corrections and band gains.}
+\caption{I2V Stage 1 AdaIN corrections and band gains (Band 0 is the DC band,
+$\gamma_0=0$, gain$\equiv1$).  $\Delta\mu$, $\Delta\sigma$ are the applied
+per-chunk AdaIN mean/std deltas.}
 \label{tab:i2v_s1_adain}
 \begin{tabular}{ccccccc}
 \toprule
 Chunk & $\Delta\mu$ & $\Delta\sigma$ & $g_0$ & $g_1$ & $g_2$ & $g_3$ \\
 \midrule
-1 & $+0.000$ & $+0.000$ & 1.0000 & 1.0000 & 1.0000 & 1.0000 \\
-2 & $-0.009$ & $-0.063$ & 1.0000 & 0.9931 & 0.9921 & 0.9918 \\
-3 & $+0.002$ & $-0.168$ & 1.0000 & 0.9945 & 0.9922 & 0.9945 \\
+1  & $+0.0000$ & $+0.0000$ & 1.0000 & 1.0000 & 1.0000 & 1.0000 \\
+2  & $+0.0021$ & $-0.0017$ & 1.0000 & 0.9963 & 0.9905 & 0.9906 \\
+3  & $+0.0064$ & $-0.0092$ & 1.0000 & 0.9971 & 0.9926 & 0.9899 \\
+4  & $+0.0082$ & $-0.0173$ & 1.0000 & 0.9965 & 0.9883 & 0.9890 \\
+5  & $+0.0049$ & $-0.0059$ & 1.0000 & 0.9965 & 0.9907 & 0.9930 \\
+6  & $+0.0075$ & $-0.0161$ & 1.0000 & 0.9969 & 0.9862 & 0.9886 \\
+7  & $+0.0096$ & $+0.0020$ & 1.0000 & 0.9976 & 0.9897 & 0.9938 \\
+8  & $-0.0053$ & $-0.0853$ & 1.0000 & 0.9863 & 0.9686 & 0.9615 \\
+9  & $+0.0022$ & $-0.0313$ & 1.0000 & 0.9949 & 0.9816 & 0.9827 \\
+10 & $+0.0020$ & $-0.0365$ & 1.0000 & 0.9934 & 0.9780 & 0.9807 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The AdaIN correction in chunk~2 has a downward std direction ($\Delta\sigma=-0.063$)
-compared to the upward direction in T2V ($+0.044$): the image-conditioned
-chunk~1 produces a higher std than the subsequent text-only chunks, so AdaIN
-here compresses rather than expands.  Chunk~3 requires the largest std correction
-of either experiment ($-0.168$), pulling the raw pre-correction std of 1.12
-down to 0.95; the band~3 shrinkage gain (0.9945) is mild here because spectral
-energy has not grown as strongly as in T2V.
+Most chunks receive small AdaIN corrections and mild spectral shrinkage.  The
+exception is chunk~8, whose raw pre-correction std reached 1.125 (vs
+$\approx0.95$ elsewhere): AdaIN pulls it back to 0.955 ($\Delta\sigma=-0.085$)
+and the spectral shrinkage bites hardest here (band-3 gain 0.9615), the two
+corrections jointly absorbing a localised energy spike before it can propagate
+through the SLB.  This is the correction stack operating as designed --- a
+single anomalous chunk is renormalised rather than fed forward.
 
-The anchor bank grows to size~2 by chunk~3: chunk~2 triggers a scene-change
-streak (sim$=0.7343$, streak$=1$), and chunk~3 commits a second anchor at
-frame~92 (bank\_frame\_ids$=[30,\,92]$), growing the bank from 1 to 2.
+The anchor bank grows from 1 to 5 entries over the run
+(bank\_frame\_ids $=[30,\,92,\,123,\,216,\,309]$), driven by the automatic
+forced-insertion cadence ($F_a=3$ for a 10-chunk run) since the single-scene
+content rarely trips the similarity threshold.  Because the ComfyUI sampler
+currently uses the bank for identity telemetry only (the retrieval-injection
+conditioning path of Section~\ref{sec:anchor} is present in the reference
+library but not yet wired into this sampler), the bank here measures identity
+drift rather than correcting it.
 
-\subsubsection{Stage 2 Results}
-
-\begin{table}[H]
-\centering
-\caption{I2V Stage 2 per-chunk metrics.  Identity\_sim compares against Stage 2
-chunk~1's first frame (the guide-image frame); the negative values for chunks 3--5
-reflect that those scenes are substantially different from the opening image.}
-\label{tab:i2v_s2_metrics}
-\begin{tabular}{ccccc}
-\toprule
-Chunk & Frames (lat) & Boundary sim$\uparrow$ & Intra sim$\uparrow$ & Identity sim \\
-\midrule
-1/5 & 0--21 & N/A & $-0.020$ & 1.0000 (ref) \\
-2/5 & 21--42 & 0.9854 & 0.6612 & $+0.095$ \\
-3/5 & 42--63 & 0.8342 & 0.7772 & $-0.179$ \\
-4/5 & 63--84 & 0.9897 & 0.5971 & $-0.202$ \\
-5/5 & 84--93 & 0.9863 & 0.8761 & $-0.200$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-Stage 2 boundary continuity is maintained at four of five boundaries
-(0.985--0.990), with one lower-similarity transition at chunk~3 (0.834).
-The Stage 2 chunk~3 boundary covers the mid-sequence scene transition where
-Stage 1 audio was also less coherent (Section~\ref{sec:i2v_audio}), suggesting
-a localised region of lower-quality Stage 1 generation that Stage 2 partially
-corrects but cannot fully eliminate.
-
-Stage 2 chunk~1 has an intra similarity of $-0.020$ (nearly zero), much lower
-than T2V's 0.480.  This reflects that I2V Stage 1 chunk~1 already had very low
-intra similarity (0.265), and Stage 2 chunk~1 covers exactly that region (latent
-frames 0--21).  The negative value indicates that the first and last frames of
-this refined chunk are essentially uncorrelated---the refined video transitions
-dramatically within the first 6.7 seconds, consistent with a video that begins
-at a specific guide image and moves through its first scene.
-
-The identity\_sim values for chunks 3--5 ($-0.18$ to $-0.20$) are substantially
-more negative than T2V ($+0.41$ to $+0.52$), because in I2V mode the Stage 2
-reference frame is the guide image, which is by construction very different from
-the content of scenes 2 and 3.
-
-\subsubsection{Audio Coherence}
+\subsubsection{Stage 1 Audio}
 \label{sec:i2v_audio}
 
 \begin{table}[H]
 \centering
-\caption{I2V within-chunk audio similarity (cosine, three sequential segment pairs).}
+\caption{I2V Stage 1 per-chunk audio metrics.  Within-chunk similarity is
+reported at the start and end of each chunk; env\_corr is the loudness-envelope
+correlation with the previous chunk ($>0.7$ flags a repeating gesture); SLB is
+the audio streaming-buffer honoured fraction.}
 \label{tab:aud_i2v}
-\begin{tabular}{cccc}
+\begin{tabular}{ccccccc}
 \toprule
-Stage & Chunk & Seg 1$\to$2 & Seg 2$\to$3 \\
+Chunk & WC start & WC end & env\_corr & RMS & Bnd sim & SLB \\
 \midrule
-S1 & 1/3 & $+0.998$ & $+0.999$ \\
-S1 & 2/3 & $+0.984$ & $-0.824$ \\
-S1 & 3/3 & $+0.992$ & $+0.811$ \\
-\midrule
-S2 & 1/5 & $+0.980$ & $+0.975$ \\
-S2 & 2/5 & $+0.974$ & $+0.890$ \\
-S2 & 3/5 & $+0.163$ & $+0.175$ \\
-S2 & 4/5 & $+0.919$ & $+0.973$ \\
-S2 & 5/5 & $+0.967$ & $-0.289$ \\
+1  & 0.805 & 0.985 & ---   & 0.502 & N/A    & N/A   \\
+2  & 0.957 & 0.931 & 0.145 & 0.466 & 0.9096 & 1.000 \\
+3  & 0.990 & 0.955 & 0.768 & 0.438 & 0.9415 & 1.000 \\
+4  & 0.986 & 0.923 & 0.933 & 0.445 & 0.9383 & 1.000 \\
+5  & 0.978 & 0.869 & 0.892 & 0.432 & 0.9447 & 1.000 \\
+6  & 0.954 & 0.811 & 0.909 & 0.429 & 0.9449 & 1.000 \\
+7  & 0.941 & 0.800 & 0.904 & 0.427 & 0.9496 & 1.000 \\
+8  & 0.934 & 0.795 & 0.945 & 0.424 & 0.9427 & 1.000 \\
+9  & 0.930 & 0.785 & 0.941 & 0.421 & 0.9486 & 1.000 \\
+10 & 0.932 & 0.790 & 0.923 & 0.423 & 0.9417 & 1.000 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-In I2V mode, Stage~1 chunk~1 audio is highly coherent ($+0.998 \to +0.999$),
-in stark contrast to T2V chunk~1 ($-0.254 \to -0.337$).  This difference is
-significant: both experiments have no audio SLB at chunk~1.  The sole difference
-is the guide image, which provides a strong visual anchor via cross-modal
-attention in LTX-2.3's joint audio-video transformer.  This demonstrates that
-audio coherence in chunk~1 depends not only on the audio SLB but also on the
-strength of the visual context conditioning.
+The audio streaming buffer is honoured exactly (1.000) at every seam, and the
+audio boundary similarity is stable at $0.91$--$0.95$ throughout.  The
+drift-capped EMA energy anchor holds the per-chunk RMS within $0.42$--$0.50$ and
+settles toward its anchored target ($\text{ema\_rms}\approx0.463$) rather than
+climbing: the divergent loudness growth measured on un-anchored audio does not
+appear.  Under the guide image, chunk~1 audio is already coherent (within-chunk
+$0.805\to0.985$) despite having no audio buffer.  Section~\ref{sec:t2v_audio}
+tests whether this is attributable to the visual anchor via cross-modal
+attention or to the seeded audio noise alone, by repeating the identical
+comparison with no guide image present.
 
-Stage~1 chunk~2 audio shows a within-chunk drop: the first segment pair is
-coherent ($+0.984$) but the second is anti-correlated ($-0.824$).  This occurs
-at the second scene boundary, where the model transitions to new scene content
-partway through chunk~2; the joint audio-video denoiser appears to handle the
-video transition but produce momentarily incoherent audio mid-chunk.
+Two repetition signatures remain.  First, the end-of-chunk within-chunk
+similarity declines monotonically across the run ($0.931$ at chunk~2 to $0.785$
+at chunk~9): chunk \emph{starts} stay coherent, but each chunk drifts further
+from its own opening by the time it ends as the run proceeds.  Second, the
+loudness-envelope correlation with the previous chunk locks into $0.77$--$0.95$
+from chunk~3 onward --- the same loudness gesture recurs each chunk.  Envelope
+flattening (Section~\ref{sec:audio}) reduces this correlation but does not
+eliminate it; the phase-lock detector places the audio energy peak at relative
+frame~7 in most chunks (mode~7). Both are characterised further in
+Section~\ref{sec:failures}.
 
-In Stage~2, the I2V audio is highly coherent in chunks 1--2 (inheriting the
-coherent S1 audio) but shows a collapse at chunk~3 ($+0.163 \to +0.175$),
-which corresponds to the audio region seeded from S1 chunk~2's incoherent
-second half ($-0.824$).  Chunks 4--5 recover to $0.92$--$0.97$ once the
-Stage~2 audio SLB has accumulated sufficient refined context.
+\subsubsection{Stage 2 Results}
+
+Stage~2 refines the $2\times$-upsampled latent in seven overlapping windows
+($\text{fpc}=45$, $\text{overlap}=15$) with the audio pass \emph{decoupled}:
+the video refines against frozen Stage-1 audio, then the audio is refined
+separately against the refined video at denoise fraction 0.4.
+
+\begin{table}[H]
+\centering
+\caption{I2V Stage 2 per-window metrics (7 windows).  Fid is video fidelity to
+the Stage-1 latent (first / last frame of the window); Aud\_bnd is the audio
+window-boundary similarity.}
+\label{tab:i2v_s2_metrics}
+\begin{tabular}{ccccccc}
+\toprule
+Window & Bnd sim$\uparrow$ & Intra sim & Fid first & Fid last & Aud\_bnd \\
+\midrule
+1/7 & N/A    & 0.6095 & 0.9771 & 0.9466 & N/A    \\
+2/7 & 0.9183 & 0.7797 & 0.9530 & 0.9421 & 0.5937 \\
+3/7 & 0.9348 & 0.7247 & 0.9433 & 0.8949 & 0.6867 \\
+4/7 & 0.8455 & 0.4013 & 0.8964 & 0.9562 & 0.6512 \\
+5/7 & 0.9543 & 0.5582 & 0.9481 & 0.9379 & 0.6273 \\
+6/7 & 0.9385 & 0.8011 & 0.9300 & 0.9009 & 0.7115 \\
+7/7 & 0.8456 & 0.7035 & 0.8556 & 0.7879 & 0.7207 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Video seam continuity ranges $0.85$--$0.95$, weakest at windows~4 and~7
+(both 0.846).  Window~4 ($t\approx44.7$--$59.3$\,s) is the weakest window of the
+Stage-2 pass by a clear margin (intra similarity 0.401 against $0.56$--$0.80$
+elsewhere).  Fidelity to the Stage-1 latent erodes toward the end of the run:
+the end-of-window fidelity falls from $0.947$ in window~1 to $0.788$ in the
+final window ($t\approx88.7$--$103.3$\,s), i.e.\ the refinement softens away from
+the Stage-1 structure most in the last $\approx15$\,s.
+
+The decoupled audio pass at denoise 0.4 \emph{polishes} rather than rebuilds:
+the refined audio stays close to its Stage-1 seed at every window
+(seed similarity $0.79$--$0.81$).  Even so, the audio window-boundary similarity
+is only $0.59$--$0.72$ (worst at the first seam, 15\,s) despite the audio SLB
+being honoured at 1.000 at every window --- the SLB pins the seam \emph{frame},
+but two independently denoised windows still disagree in loudness and character
+across it.  The seam similarity does trend upward over the run
+($0.594\to0.721$), tracking the Stage-1 audio settling into its anchored energy
+floor; the single-window-vs-multi-window rebuild trade-off behind this number is
+discussed in Section~\ref{sec:failures}.  The assembled refined latents are
+$[1,128,310,22,40]$ (video, std $0.950$) and $[1,8,2593,16]$ (audio, std
+$0.521$), with no NaN/Inf.
 
 %--------------------------------------------------------------------------
 \subsection{Computational Overhead}
@@ -927,33 +1071,46 @@ Stage~2 audio SLB has accumulated sufficient refined context.
 
 \begin{table}[H]
 \centering
-\caption{Wall-clock timing on a 16\,GB GPU (RTX-class, CPU block-streaming).
-T2V and I2V timings are nearly identical; token counts, not conditioning mode,
-dominate iteration cost.}
+\caption{Wall-clock timing for the I2V run on a 16\,GB GPU (RTX-class, CPU
+block-streaming); the T2V run's per-chunk/per-window timings match to within a
+few percent throughout (see text) and are omitted for brevity.  Stage~1 runs
+four transformer passes per step (split CFG, modality, STG); each Stage~2
+window runs a video pass and a separate decoupled audio pass.}
 \label{tab:timing}
-\begin{tabular}{llccc}
+\begin{tabular}{lccccc}
 \toprule
-Stage & Chunk & Frames (new+SLB) & Tokens & Time \\
+Stage / pass & Chunk & Steps & s/it & Time & Tokens \\
 \midrule
-S1 T2V & 1/3 & 31+0 & 27,280 & $\approx6.9$\,min \\
-S1 T2V & 2--3 & 31+8 & 34,320 & $\approx8.8$\,min each \\
-S1 I2V & 1/3 & 31+0 (+1 guide) & 28,160 & $\approx7.0$\,min \\
-S1 I2V & 2--3 & 31+8 & 34,320 & $\approx8.9$\,min each \\
+S1          & 1/10    & 20 & 38.7      & $\approx12.9$\,min & --- \\
+S1          & 2--10/10 & 20 & 47.8--49.2 & $\approx16.1$\,min each & --- \\
 \midrule
-S2 & 1/5 & 21+0 & 18,480 & $\approx5.0$\,min \\
-S2 & 2--4 & 21+8 & 25,520 & $\approx7.4$\,min each \\
-S2 & 5/5 & 9+8 & 14,960 & $\approx4.1$\,min \\
+S2 video    & 1/7     & 3  & 79.6      & $\approx4.0$\,min & 39{,}600 \\
+S2 video    & 2--7/7  & 3  & 118--121  & $\approx5.9$\,min each & $\approx52{,}000$ \\
+S2 audio    & each    & 3  & 79.7--121 & $\approx$ matches video pass & --- \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Total generation time: T2V $\approx24.6\,\text{min (S1)} + 30.6\,\text{min (S2)}
-= \mathbf{55}\,\textbf{min}$; I2V $\approx24.9\,\text{min (S1)} +
-31.3\,\text{min (S2)} = \mathbf{56}\,\textbf{min}$.  Both modes produce
-approximately 30 seconds of audio-video in under one hour on a single 16\,GB GPU.
-The per-iteration cost is determined by token count rather than conditioning mode:
-Stage~2 chunk~1 (18,480 tokens) costs $\approx100$\,s/it vs $\approx147$\,s/it
-for 25,520-token chunks.
+Total generation time: Stage~1 $\approx158$\,min $+$ Stage~2 $\approx79$\,min
+$\approx\mathbf{237}\,\textbf{min}$ ($\approx4$\,h) for a $\approx103$-second
+clip.  The dominant cost driver is the four-pass guidance in Stage~1 --- each
+denoising step now runs four transformer passes (conditional, unconditional,
+modality-isolated, STG-perturbed) rather than one --- combined with ten chunks
+at $\text{new\_lf}=31$.  In Stage~2 the per-window cost more than doubles after
+window~1 (79.6\,s/it $\to$ 118--121\,s/it) despite the video token count rising
+only $\approx31\%$: as the run proceeds, an increasing share of the model is
+pushed to CPU (offloaded weights grow from $\approx6.6$\,GB to $\approx9.1$\,GB
+across the pass), so the slowdown is disproportionate to the token increase and
+is an offload-pressure effect rather than a compute-scaling one.
+
+The T2V run (Stage~1 $\approx158$\,min, Stage~2 $\approx80$\,min, total
+$\approx238$\,min) costs the same as I2V to within rounding: per-chunk and
+per-window s/it match to a few percent at every position (e.g.\ Stage-2
+window~2: $121.9$\,s/it T2V vs.\ $121.5$--$122.8$\,s/it I2V), confirming that
+the guide image changes neither the token count nor the compute cost --- only
+the conditioning.  The Stage-2 offload-pressure slowdown reproduces at the same
+windows in both runs, supporting that it is a property of the refinement
+pipeline rather than of run content.
 
 %--------------------------------------------------------------------------
 \section{Discussion}
@@ -962,128 +1119,200 @@ for 25,520-token chunks.
 
 \subsection{Effect of Chunk Length}
 
-Both experiments used $\text{new\_lf}=31$ ($\approx10$\,s per chunk at 25\,fps),
-exceeding the 21-frame safe limit established in earlier open-loop testing.
-With CLSS corrections fully active, T2V achieves Stage~1 boundary similarities
-of 0.9949--0.9950 and I2V achieves 0.9464--0.9495: both well above the values
-obtainable without corrections.  Spectral shrinkage applies progressively
-stronger corrections in later chunks (T2V band~3 gain$=0.938$ at chunk~3; I2V
-band~3 gain$=0.994$ at chunk~3, with the remaining correction handled by AdaIN),
-demonstrating that CLSS widens the practical chunk-length operating range beyond
-what open-loop streaming allows.
+Both runs used $\text{new\_lf}=31$ ($\approx10$\,s per chunk), exceeding the
+21-frame safe limit established in earlier open-loop testing, streamed as ten
+chunks under the active guidance stack.  In neither run does boundary
+similarity degrade with chunk index: I2V holds $0.910$--$0.967$ with its floor
+at the first SLB-conditioned hand-off (chunk~2), and T2V holds $0.797$--$0.968$
+with its floor at the same seam --- the corrected loop does not compound error
+over this horizon in either conditioning mode, though T2V's floor sits
+noticeably lower.  Spectral shrinkage engages more in T2V: band-3 gains regularly
+fall to $0.95$--$0.96$ (I2V mostly stays $\geq0.98$), consistent with every T2V
+chunk needing a downward AdaIN std correction (Table~\ref{tab:t2v_s1_adain})
+where I2V's corrections are mixed-sign.  In both runs the correction stack
+responds to measured excess rather than applying a fixed schedule --- it engages
+hardest exactly where a chunk's raw statistics run hottest (I2V chunk~8;
+T2V nearly every chunk).
 
-The I2V experiment's lower boundary similarities (0.946--0.950 vs T2V's
-0.995) are consistent with the I2V generation producing more dynamic visual
-transitions: the model moves from a specific fixed frame toward the target scene,
-creating larger inter-chunk visual change at boundaries.
+\subsection{Identity Tracking and Boundary Self-Consistency}
 
-\subsection{Identity Tracking and the Anchor Bank Fix}
-
-The repaired identity\_sim metric reveals a qualitatively new observation: chunk
-2's identity\_sim (0.9949) equals its boundary\_sim exactly.  This is not a
-coincidence---it is a \emph{self-consistency check}.  The anchor was seeded from
-chunk 1's last frame; the SLB passes that same frame as the first latent frame of
-chunk 2's conditioning.  Therefore the anchor query and the boundary query both
-compare the same source frame (chunk 1 frame 30) against the same target frame
-(chunk 2 frame 0).  Seeing both metrics agree validates that the anchor bank and
-the SLB are operating on the same reference, and that the tau\_c re-noising at the
-boundary introduces only minimal distributional shift ($\leq0.5\%$ similarity loss).
+Chunk~2's identity\_sim (0.9097) equals its boundary\_sim exactly.  This is not a
+coincidence but a \emph{self-consistency check}: the anchor was seeded from
+chunk~1's last frame, and the SLB passes that same frame as the first latent
+frame of chunk~2's conditioning, so the anchor query and the boundary query
+compare the same source frame (chunk~1 frame~30) against the same target frame
+(chunk~2 frame~0).  Both metrics agreeing validates that the anchor bank and the
+SLB operate on the same reference, and that the $\tau_c$ re-noising at the
+boundary introduces only minimal distributional shift.  For later chunks the
+bank holds multiple entries and the identity query selects a different anchor
+than the boundary, so the two metrics diverge, as expected (e.g.\ chunk~6:
+identity 0.747 vs boundary 0.960).  The same self-consistency check holds in
+the unrelated T2V run at the same chunk (identity $0.7974=$ boundary $0.7974$,
+Table~\ref{tab:t2v_s1_metrics}), confirming the mechanism is a property of the
+anchor/SLB bookkeeping rather than of any particular content.
 
 \subsection{Audio Coherence and the Role of Visual Context}
 
-The two experiments together reveal that audio coherence in chunk~1 is not
-determined solely by the presence of an audio SLB, but also by the strength
-of the visual context.
+A natural hypothesis is that a guide image substitutes for the absent chunk-1
+audio buffer as a coherence anchor: in LTX-2.3's joint audio-video transformer,
+video and audio tokens share self-attention layers, so a strong single-frame
+visual prior could constrain audio generation implicitly through cross-modal
+attention.  The I2V run alone was consistent with this (chunk~1 audio coherent,
+$0.805\to0.985$, with no audio buffer present), but could not isolate the cause
+from the seeded audio noise, which is an equally plausible contributor and is
+present in every run.
 
-In T2V (Experiment~1), Stage~1 chunk~1 audio is anti-correlated ($-0.254 \to
--0.337$) despite 20 denoising steps over 253 audio latent frames.  In I2V
-(Experiment~2), with the same step count and the same absence of an audio SLB,
-chunk~1 audio reaches $+0.998 \to +0.999$.  The sole conditioning difference is
-the guide image.  In LTX-2.3's joint audio-video transformer, visual tokens and
-audio tokens share the same self-attention layers; a strong single-frame visual
-anchor therefore constrains the audio generation implicitly through cross-modal
-attention, preventing the audio from wandering incoherently across the chunk.
-
-This suggests that the T2V audio incoherence at chunk~1 arises from the absence
-of \emph{any} strong conditioning anchor---neither an audio SLB nor a visual
-reference---rather than from a fundamental limitation of the step count.  A
-short silent audio SLB or a visual guide image are thus alternative mitigations;
-the I2V experiment provides empirical evidence that the latter is sufficient.
-
-Subsequent chunks in both experiments benefit from the audio SLB and achieve
-high coherence ($\geq0.81$ in S1; $\geq0.91$ by S2 chunks 4--5 in T2V).
-The I2V Stage~2 audio shows a localised collapse at chunk~3 ($+0.163 \to
-+0.175$), tracing back to the anti-correlated audio in Stage~1 chunk~2's
-second half ($-0.824$), which Stage~2 refinement only partially corrects.
+The T2V run is the controlled test: identical seed and configuration, no guide
+image.  Chunk~1 audio there is \emph{also} coherent ($0.948\to0.969$,
+Table~\ref{tab:aud_t2v}) --- if anything more so than I2V's.  Holding the seed
+and audio-noise field fixed while removing the only visual anchor does not
+collapse chunk-1 coherence, so the hypothesis is not supported: audio coherence
+at chunk~1 tracks the seeded noise field and the audio generation process
+itself, not the presence of a visual prior.  The two runs' phase-lock behaviour
+argues the same direction from a different angle: I2V (with the guide image) is
+the more tightly locked run on \emph{both} the audio-peak and the video-layout
+detectors (Section~\ref{sec:failures}), which is the opposite of what a
+stabilising-anchor account would predict --- if a strong visual prior
+constrained the joint generation, it should reduce repetition, not increase it.
+Subsequent chunks in both runs benefit from the audio SLB and hold within-chunk
+start coherence $\geq0.93$ (I2V) and mostly $\geq0.88$ (T2V) throughout.
 
 \subsection{Stability Margin}
 
-With $\rho_{\text{loop}} = 0.570$, the CLSS feedback loop provides a $43\%$
+With $\rho_{\text{loop}} = 0.570$, the CLSS feedback loop provides a $\approx43\%$
 gain reduction per chunk before accounting for the model's open-loop gain $g$.
-The band 3 gain in chunk 3 (0.938) indicates that high-frequency latent energy
-was growing by $\approx6.7\%$ per chunk without shrinkage correction---giving
-a rough empirical estimate of $g \approx 1.07$ for the spectral channel in this
-run.  The resulting $\rho_{\text{closed}} \approx 0.57 \times 1.07 \approx 0.61$
-provides ample margin below the stability boundary of 1.
+In the I2V run the spectral-shrinkage correction was mostly light --- band-3
+gains near 0.99 (a $\approx3\%$ high-frequency energy excess over the EMA
+reference) for most chunks, rising to a $\approx14\%$ excess at chunk~8 (gain
+0.962).  Taking the typical $\approx3\%$ per-chunk growth as a rough estimate of
+the open-loop gain in the spectral channel gives $g\approx1.03$ and
+$\rho_{\text{closed}} \approx 0.57\times1.03 \approx 0.59$, comfortably below the
+stability boundary of~1.  The chunk-8 spike is the correction stack absorbing a
+transient (see Table~\ref{tab:i2v_s1_adain}) rather than a sign of runaway growth.
+The T2V run runs hotter on this channel: band-3 gains sit at $0.95$--$0.96$ for
+most chunks, a $\approx4$--$5\%$ typical excess, giving $g\approx1.05$ and
+$\rho_{\text{closed}}\approx0.57\times1.05\approx0.60$ --- still comfortably
+stable, and close enough to the I2V estimate that the margin appears to be a
+property of the correction stack rather than of the conditioning mode.  T2V's
+raw audio, however, shows a spectral drift the correction stack does not reach:
+the Stage-1 trend summary's \texttt{aud\_hf} statistic (a ratio of high-band to
+reference energy, not covered by the video-side shrinkage of
+Section~\ref{sec:shrink}) grows from $1.26$ to $1.89$ over the run, with the
+top frequency bins individually reaching $2.1$--$2.65\times$ the chunk-1
+reference by chunk~7 --- I2V's equivalent statistic is flat ($0.87\to0.87$).
+This is audio-domain high-frequency energy growth with no analogue in the video
+channel or in the I2V run, and is unresolved by any current correction.
 
-\subsection{Multi-Scene Prompting and Identity Metrics}
+\subsection{Stage-2 Identity Metric Ambiguity}
 
-The Stage 2 identity\_sim plateau at 0.41--0.52 across chunks 2--5 is consistent
-with three equally-distinct scenes.  Stage 2 lacks an anchor bank; identity
-tracking is reduced to comparing against the fixed first-chunk reference, which
-conflates intended scene changes with drift.  Adding an anchor bank to Stage 2
-would allow scene-aware identity tracking during refinement.
+Stage~2 lacks an anchor bank; its identity\_sim reduces to comparing each window
+against the fixed first-window reference.  On a single moving scene this
+conflates ordinary content motion with drift: in I2V, where the reference is the
+guide-image region, windows 2--7 sit at a $0.32$--$0.50$ plateau, reflecting that
+the video has moved away from its opening frames, not instability.  In T2V,
+where window~1 has no anchor to begin with, the same comparison instead
+oscillates near zero and slightly negative ($-0.30$ to $+0.09$ across
+windows~2--7) --- consistent with window~1 itself being internally
+uncorrelated (Table~\ref{tab:t2v_s2_metrics}, intra $-0.231$), so there is no
+stable reference for later windows to be ``close to'' or ``far from'' in the
+first place.  Adding a scene-aware anchor bank to Stage~2 would make this metric
+interpretable in either conditioning mode; as reported it should be read only as
+``distance from the opening,'' not as a drift signal.
 
 \subsection{Measured Failure Modes at Longer Horizons}
 \label{sec:failures}
 
-Extended runs (10 chunks, 43\,s) with per-frame telemetry exposed two
-repetition mechanisms with distinct signatures.
+Per-frame telemetry across extended runs --- including the ten-chunk,
+$\approx103$-second T2V and I2V runs reported above and shorter 13-lf runs ---
+exposes two repetition mechanisms with distinct signatures, plus a Stage-2 audio
+seam behaviour.
 
-\paragraph{Window-locked audio arcs.}  The audio energy peak locks to the
-same relative window position across chunks: $94\%$ of the window at 13\,lf
-chunks (frame 102/109, eight consecutive chunks) and $98\%$ at 31\,lf chunks
---- the arc \emph{scales with the window}, implicating the fed-forward
-conditioning geometry.  Context envelope flattening
-(Section~\ref{sec:audio}) breaks the lock; chunk-to-chunk loudness-gesture
-correlation nevertheless remains high ($0.7$--$0.95$), so repetition is
-reduced, not eliminated.
+\paragraph{Window-locked audio arcs.}  The audio energy peak locks to roughly
+the same relative window position across chunks: $94\%$ of the window at 13-lf
+chunks (frame 102/109, eight consecutive chunks), and in the 31-lf I2V run the
+phase-lock detector places the peak at relative frame~7 in most chunks
+(mode~7, covering $5/10$ chunks within $\pm1$).  The arc \emph{scales with the
+window}, implicating the fed-forward conditioning geometry.  Context envelope
+flattening (Section~\ref{sec:audio}) was active in both runs and softens the
+lock without eliminating it: I2V's chunk-to-chunk loudness-envelope correlation
+sits at $0.77$--$0.95$ from chunk~3 onward, and its end-of-chunk within-chunk
+similarity declines across the run ($0.931\to0.785$), a second face of the same
+repetition.  The T2V run --- otherwise identical, differing only in the absence
+of a guide image --- is the \emph{less} locked of the two: its audio-peak mode
+covers only $3/10$ chunks within $\pm1$, and its envelope correlation swings
+between strongly negative ($-0.49$ to $-0.27$) and strongly positive ($0.79$ to
+$0.91$) rather than settling into a lock.  The guide image is therefore
+associated with \emph{more} phase-lock, not less, which argues against reading
+the lock as an artifact of visual conditioning specifically; it is present, in
+weaker form, with no visual conditioning at all.
 
-\paragraph{A $\sim$4-second intrinsic video oscillation.}  Coarse scene
-layout departs from the scene reference and partially returns with a
-$\approx4$\,s wall-clock period that is \emph{invariant to chunk length}:
-at 13-lf ($4.3$\,s) chunks the dip lands at new-frame 5--7 in 10/10 chunks
-(appearing seam-locked), while at 31-lf ($9.9$\,s) chunks it appears twice
-per chunk at the same seconds-period.  Context strength (SLB at i2v strength)
-and context length (overlap 3/5/8) were both tested and neither removes it;
-the oscillation appears intrinsic to the model's trained temporal horizon.
-Longer overlap trades the failure shape: at overlap 8 the per-chunk
-return weakens into monotonic scene departure on some contents.
+\paragraph{A $\sim$4-second video layout oscillation.}  Coarse scene layout
+departs from the scene reference and partially returns with a $\approx4$\,s
+wall-clock period that is \emph{invariant to chunk length}: at 13-lf ($4.3$\,s)
+chunks the dip lands at new-frame 5--7 in every chunk (appearing seam-locked),
+while at 31-lf ($9.9$\,s) chunks it recurs within the chunk at the same
+seconds-period.  Context strength and context length (overlap 3/5/8) were tested
+and neither removes it; the oscillation appears intrinsic to the model's trained
+temporal horizon.  The overlap value trades the failure shape rather than curing
+it: in the overlap-8 I2V run the strict per-chunk swing-and-return is weaker
+(layout-argmin clustering loosens to mode~25, covering only $4/10$ chunks within
+$\pm1$), but global layout still wanders and on some contents overlap~8 converts
+the oscillation into monotonic scene departure.  The T2V run at the same
+overlap is looser still (mode~29, covering $2/10$), and its largest layout
+events are spread across the whole run (chunks 1, 3, 6, 7, 9, 10) rather than
+concentrated at one seam as in I2V --- the same guide-image/lock association
+seen in the audio signature above.
 
-\paragraph{Stage-2 audio seams.}  With decoupled Stage-2 audio refinement,
-a high denoise fraction ($\sigma$-scale $1.0$) re-rolls $\approx45\%$ of
-audio content per window and the re-rolls disagree at every window boundary
-(boundary cosine $0.32$--$0.42$) \emph{regardless} of the audio SLB length
---- the SLB pins the seam frame, not the style of the re-roll.  At
-denoise $0.4$ the pass polishes instead (seed similarity $0.87$--$0.92$)
-and seams hold at $0.70$--$0.83$.  Rule: high-denoise audio rebuild only as
-a single window; multi-window refinement at $\le0.4$.
+\paragraph{Stage-2 audio seams.}  With decoupled Stage-2 audio refinement, a
+high denoise fraction ($\sigma$-scale $1.0$) re-rolls $\approx45\%$ of the audio
+per window and the re-rolls disagree at every window boundary (boundary cosine
+$0.32$--$0.42$) \emph{regardless} of the audio SLB length --- the SLB pins the
+seam frame, not the style of the re-roll.  At denoise $0.4$ the pass polishes
+instead: in the I2V run the refined audio stayed within seed similarity
+$0.79$--$0.81$ of its Stage-1 source and the audio SLB was honoured at 1.000 at
+every window, yet seam similarity was still only $0.59$--$0.72$ (worst at the
+first seam) --- polishing narrows the disagreement but does not close it while
+windows are denoised independently.  The T2V run, at the same denoise fraction
+and SLB honouring, seams noticeably better ($0.75$--$0.84$, also worst at the
+first seam): its Stage-1 audio boundary similarity was already higher
+(Table~\ref{tab:aud_t2v} vs Table~\ref{tab:aud_i2v}), so Stage~2 starts each
+window's polish from more agreeable source material.  Rule: high-denoise audio
+rebuild only as a single window; multi-window refinement at $\le0.4$, and its
+seam quality inherits directly from Stage~1 audio boundary quality.
+
+\paragraph{Unbounded audio high-frequency growth (T2V only).}  The T2V run's
+top frequency bins grow from parity with the chunk-1 reference to
+$2.1$--$2.65\times$ it by chunk~7 (Section~\ref{sec:t2v_audio}), a monotonic
+trend the trend-summary's \texttt{aud\_hf} statistic tracks rising from $1.26$
+to $1.89$ over the run.  The I2V run's equivalent statistic is flat
+($0.87\to0.87$).  No current correction targets this: the video-side spectral
+shrinkage of Section~\ref{sec:shrink} operates on the video latent only, and the
+audio-side corrections (Section~\ref{sec:audio}) constrain global RMS and DC
+per channel but not the frequency distribution.  Whether this is downstream of
+the higher overall audio loudness in T2V (Section~\ref{sec:t2v_audio}) or a
+distinct effect of the missing visual conditioning is untested; an audio-side
+frequency-band shrinkage, mirroring Section~\ref{sec:shrink} but applied to the
+audio latent, is the natural next mechanism to try.
 
 %--------------------------------------------------------------------------
 \section{Limitations}
 \label{sec:limitations}
 %--------------------------------------------------------------------------
 
-\paragraph{Single experimental configuration.}
-All results in this paper are from a single generation run at one set of
-hyperparameters ($\text{new\_lf}=31$, $\text{overlap}=8$, 3 chunks, 3 scenes)
-on one hardware configuration (16\,GB VRAM, RTX-class).  No baseline
-comparisons against open-loop streaming are reported, and no ablation of the
+\paragraph{Single hyperparameter configuration, single seed.}
+The reported T2V and I2V results share one set of hyperparameters
+($\text{new\_lf}=31$, $\text{overlap}=8$, 10 chunks, 1 scene), one seed, and one
+hardware configuration (16\,GB VRAM, RTX-class); they differ only in the
+first-frame conditioning, by design, to isolate that variable.  No baseline
+comparison against open-loop streaming is reported, and no ablation of the
 individual CLSS components (re-noising alone, AdaIN alone, shrinkage alone,
-anchor bank alone) has been performed.  The paper therefore cannot quantify the
-marginal contribution of each correction or demonstrate improvement over the
-open-loop baseline from the same metrics.  These comparisons are left to future
-work.
+anchor bank alone) or of the individual guidance terms (split CFG, modality,
+STG) has been performed.  The paper therefore cannot quantify the marginal
+contribution of each correction or guidance term, or demonstrate improvement
+over the open-loop baseline from the same metrics, and every single-run
+comparison in Section~\ref{sec:discussion} (e.g.\ the phase-lock/guide-image
+association) is a $n=1$-per-arm observation, not a statistically powered
+result.  These comparisons are left to future work.
 
 \paragraph{Stability metrics vs.\ perceptual quality.}
 The reported metrics---boundary cosine similarity, intra-chunk cosine similarity,
@@ -1162,37 +1391,46 @@ energy accumulation rather than pixel-domain flicker.
 
 We presented CLSS, a four-component closed-loop streaming synthesis framework
 that enables stable long audio-video generation with LTX-2.3 22B on consumer
-16\,GB VRAM hardware.  The four corrections---calibrated context re-noising,
-EMA-tracked AdaIN, frequency-band soft shrinkage, and a dynamic anchor bank---
-achieve $\rho_{\text{loop}}=0.570$ and maintain Stage~1 boundary similarities
-above 0.946 across both T2V and I2V experiments.  A two-stage pipeline
-(streaming S1 + chunked distilled S2) delivers a fully refined audio-video
-output in approximately 55--56 minutes per 30-second clip on a single 16\,GB GPU.
+16\,GB VRAM hardware.  The four corrections --- calibrated context re-noising,
+EMA-tracked AdaIN, frequency-band soft shrinkage, and a dynamic anchor bank ---
+achieve $\rho_{\text{loop}}=0.570$; driven by a reference-parity multi-modal
+guider (split CFG, modality guidance, and STG) that correctly handles ComfyUI's
+packed audio-video latent representation, the pipeline held Stage~1 video
+boundary similarity above 0.91 (I2V) and above 0.80 (T2V) across ten chunks of
+matched $\approx103$-second single-scene clips, with the audio streaming buffer
+honoured at every seam in both and audio energy held to its anchored floor.  A
+two-stage pipeline (streaming Stage~1 + chunked distilled Stage~2) delivers a
+fully refined $2\times$-resolution audio-video output in approximately four
+hours per $\approx100$-second clip on a single 16\,GB GPU, essentially
+independent of conditioning mode.
 
-Comparison of the T2V and I2V experiments reveals that audio coherence in the
-first generated chunk---where no audio SLB is available---depends on the
-presence of a strong visual conditioning anchor, not solely on the audio SLB.
-T2V chunk~1 audio is anti-correlated ($\approx-0.3$ per segment pair) while
-I2V chunk~1 audio, conditioned on a guide image, achieves $\approx+0.999$.
-This indicates that the joint audio-video cross-modal attention in LTX-2.3
-provides sufficient visual grounding to maintain audio coherence when a visual
-reference is present.  A natural extension is to supply a short audio reference
-or visual guide before chunk~1 even in T2V mode, priming the pipeline's
-audio coherence from the start.
+Running matched T2V and I2V generations under an identical seed and guidance
+stack, differing only in the presence of a guide image, resolves a question the
+single I2V run could not: whether visual conditioning is responsible for
+chunk-1 audio coherence and for the tighter phase-lock observed in that run.
+It is not.  T2V's chunk-1 audio is coherent with no visual anchor at all
+($0.948\to0.969$, matching I2V's $0.805\to0.985$), and T2V is consistently the
+\emph{less} phase-locked of the two runs on both the audio-peak and
+video-layout detectors --- the opposite of what a stabilising-anchor account
+would predict.  The guide image does, however, correlate with a substantially
+higher video boundary-similarity floor (0.910 vs.\ 0.797 at the same seam) and
+a lower audio RMS ($0.42$--$0.50$ vs.\ $0.59$--$0.78$); T2V in turn shows an
+audio-domain failure mode absent from I2V --- top-frequency energy growing to
+$2.1$--$2.65\times$ reference by chunk~7 --- that no current correction
+targets.  Two repetition mechanisms persist across both runs at this horizon
+and are characterised rather than resolved: a window-locked audio loudness
+gesture that envelope flattening softens but does not remove, and a
+chunk-length-invariant $\approx4$-second video layout oscillation that appears
+intrinsic to the model's trained temporal window.  All of this is visible in
+the pipeline's per-chunk telemetry --- unconditional settings dumps, drift-event
+tables, and a phase-lock detector --- which is designed to localise such effects
+in wall-clock time and latent-frame position, and to make a silently inactive
+guidance path impossible to miss (a guidance term that does not change
+per-step wall-clock time is not running).
 
-The July 2026 audit is itself a result.  Two defects --- unseeded Stage-1
-audio noise and a guidance stack silently disabled by ComfyUI's packed-latent
-sampling representation --- survived weeks of experimentation because both
-failed \emph{silently} and the metrics they corrupted still moved plausibly.
-The telemetry that finally exposed them (unconditional settings dumps,
-one-time guidance-path announcements, and treating wall-clock invariance as
-evidence of a missing pass) is now part of the pipeline, and the
-reference-parity guider (split CFG, modality guidance, STG) is verified
-active; the first fully guided run is the most stationary measured to date.
-
-The ComfyUI node integration with per-chunk diagnostic telemetry supports rapid
-empirical validation of CLSS hyperparameter choices and provides interpretable
-monitoring of the feedback loop during generation.
+Object-level identity persistence across chunk boundaries, invisible to the
+current structural metrics in both conditioning modes, remains the principal
+open problem for content-level quality.
 
 %--------------------------------------------------------------------------
 \section*{Acknowledgements}
