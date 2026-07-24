@@ -2,7 +2,7 @@
 [CLSS] ══════════ SETTINGS: CLSSStreamingSampler (Stage 1) ══════════
 [CLSS]   num_chunks=10  length_seconds=0.0  fps=24.0
 [CLSS]   image=none  vae=none
-[CLSS]   audio_slb='off'  detail_anchor='on'
+[CLSS]   audio_slb='auto'  detail_anchor='on'
 [CLSS]   audio_ref_af=67  audio_ctx_flatten='off'  audio_anchor='rms_only'
 [CLSS]   overlap_jitter='on'
 [CLSS]   clss_config={'tau_c': 0.05, 'beta': 0.4, 'ema_lambda': 0.1, 'ema_sigma_max_drift': 0.05, 'adain_max_amplification': 1.2, 'n_freq_bands': 4, 'freq_gamma': (0.0, 0.05, 0.2, 0.3), 'anchor_threshold': 0.78, 'anchor_persistence': 2, 'anchor_max_size': 8, 'anchor_top_m': 2, 'anchor_strength': 1.0, 'anchor_force_every': 0, 'overlap_latent_frames': 8, 'new_latent_frames': 13, 'measure_g': False, 'measure_g_epsilon': 0.01, 'noise_temporal_corr': 0.3}
@@ -10,6 +10,7 @@
 [CLSS]   sigmas: n=21  values=[1.0, 0.9901, 0.9793, 0.9674, 0.9544, 0.9399, 0.9238, 0.9058, 0.8856, 0.8625, 0.8362, 0.8056, 0.7699, 0.7276, 0.6766, 0.6139, 0.5351, 0.433, 0.2954, 0.1, 0.0]
 [CLSS] ═════════════════════════════════════════════════════════════
 [CLSS] auto: anchor_force_every=3 (num_chunks=10)
+[CLSS] auto: audio_slb=on (energy anchor makes the SLB safe at any length; provides cross-chunk audio content continuity)
 [CLSS] audio accounting: af_per_px=1.0496  chunk1=127af  chunks2+=134af  overlap=67af  total=1333af for 1273px
 [CLSS] overlap jitter: per-chunk overlap cycle [8, 4, 6] lf (full/half/¾ of 8) — no two consecutive chunks share a window phase (anti-loop; video+audio stay proportional)
 [CLSS] Starting — chunks=10, new_lf=16, overlap_lf=8, scenes=1, tau_c=0.05, beta=0.4, mode=AV, video_cfg=4.0 audio_cfg=7.0 (split), new_af=127, audio_overlap_af=67
@@ -24,343 +25,343 @@
 [CLSS S1]   noise pos=0 a_pos=0 fingerprint=[-1.5120155811309814, -0.462088942527771, -0.923983633518219, -0.9708049297332764]
 [INFO] Requested to load LTXAV
 [INFO] loaded completely; 14383.36 MB usable, 13825.17 MB loaded, full load: True
-  0%|                                                                                                                                      | 0/20 [00:00<?, ?it/s,   Model Initializing ...  ][CLSS AVGuiderV2] step-1 stg_diff_norm: vid=85.1513  aud=20.2199  (0 would mean the self-attn skip is inert)
+  0%|                                                                                                                                      | 0/20 [00:00<?, ?it/s,   Model Initializing ...  ][CLSS AVGuiderV2] step-1 stg_diff_norm: vid=85.2544  aud=20.2701  (0 would mean the self-attn skip is inert)
 [CLSS AVGuiderV2] active: video_cfg=4.0  audio_cfg=7.0  modality=1.0  stg=v1.0/a1.0@blk[28]  rescale=0.70  passes/step=3
-100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 20/20 [06:07<00:00, 18.37s/it]
+100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 20/20 [06:19<00:00, 18.97s/it]
 [CLSS] chunk=0  ema_mu=nan  ema_sigma=nan  adain_delta_mean=+0.00000  delta_std=+0.00000
-[CLSS] chunk=0  band_gain=[1.0000, 1.0000, 1.0000, 1.0000]  band_E=[7.306e+02, 6.788e+02, 7.772e+02, 6.294e+02]  band_Eref=[nan, nan, nan, nan]
-[CLSS S1]   detail anchor: reference captured E_low=0.3299 E_high=0.3525 hf_share=0.5166
-[CLSS S1]   origin_sim/frame: [0.341, 0.444, 0.305, 0.221, 0.243, 0.322, 0.402, 0.344, 0.33, 0.291, 0.302, 0.251, 0.34, 0.434, 0.64, 1.0]
-[CLSS S1]   layout_sim/frame: [-0.027, 0.634, -0.299, -0.511, -0.6, -0.349, 0.192, 0.008, 0.225, -0.368, -0.232, -0.472, -0.318, 0.725, 0.733, 1.0]  (coarse layout vs scene-first)
+[CLSS] chunk=0  band_gain=[1.0000, 1.0000, 1.0000, 1.0000]  band_E=[7.387e+02, 6.257e+02, 6.974e+02, 5.481e+02]  band_Eref=[nan, nan, nan, nan]
+[CLSS S1]   detail anchor: reference captured E_low=0.3249 E_high=0.3075 hf_share=0.4863
+[CLSS S1]   origin_sim/frame: [0.161, 0.26, 0.198, 0.19, 0.213, 0.251, 0.324, 0.279, 0.284, 0.273, 0.295, 0.273, 0.397, 0.512, 0.608, 1.0]
+[CLSS S1]   layout_sim/frame: [-0.078, 0.271, -0.269, -0.295, -0.39, -0.25, 0.315, 0.359, 0.516, 0.268, 0.412, -0.261, -0.072, 0.382, 0.684, 1.0]  (coarse layout vs scene-first)
 [CLSS] chunk=0  anchors: bank_size=1  last_frame_max_sim=1.0000  new_anchor=True  scene_change_streak=0  bank_frame_ids=[15]
-[CLSS S1]   video done: pre_AdaIN mean=0.0081 std=0.8944 | post_AdaIN mean=0.0081 std=0.8944 | video_SLB updated shape=torch.Size([1, 128, 8, 11, 20])
-[CLSS S1]   boundary_sim=N/A(first)  intra_chunk_sim=0.1151
+[CLSS S1]   video done: pre_AdaIN mean=0.0050 std=0.8611 | post_AdaIN mean=0.0050 std=0.8611 | video_SLB updated shape=torch.Size([1, 128, 8, 11, 20])
+[CLSS S1]   boundary_sim=N/A(first)  intra_chunk_sim=0.0215
 [CLSS S1]   identity_sim=1.0000 (reference)
-[CLSS S1]   audio out: aud_out shape=[1, 8, 127, 16] mean=0.2424 std=0.8046 min=-6.1787 max=3.0798 nan=False inf=False
+[CLSS S1]   audio out: aud_out shape=[1, 8, 127, 16] mean=0.2497 std=0.8178 min=-5.9832 max=3.3102 nan=False inf=False
 [CLSS S1]   audio acc: new_aud af=[0:127] (127f kept, 0f overlap-time dropped)
-[CLSS S1]   audio first-8f per-ch absmax: [1.795 2.357 2.270 3.148 6.179 2.137 2.913 1.948]  ch_std: [0.458 0.800 0.645 0.745 0.925 0.629 0.899 0.535]
+[CLSS S1]   audio first-8f per-ch absmax: [1.931 2.413 2.509 3.258 5.983 2.038 2.920 1.957]  ch_std: [0.478 0.835 0.641 0.747 0.946 0.623 0.908 0.547]
 [CLSS S1]   chunk-1 audio fade-in applied (0.25→1.0 over 4f)
-[CLSS S1]   chunk-1 audio soft-clamp ±4σ applied  new_abs_max=3.0798
-[CLSS S1]   audio_within_chunk_sim: 0.743 → 0.643
+[CLSS S1]   chunk-1 audio soft-clamp ±4σ applied  new_abs_max=3.3102
+[CLSS S1]   audio_within_chunk_sim: 0.745 → 0.622
 [CLSS S1]   audio_boundary_sim=N/A(first)
-[CLSS S1]   audio RMS=0.8272  peak_frame=50/127  seg_rms=[0.794 0.945 0.808 0.762]
-[CLSS S1]   audio freq_energy(ref)=[0.649 0.713 0.615 0.729 0.632 0.727 0.640 0.666 0.706 0.769 0.864 0.831 0.621 0.626 0.518 0.514]
-[CLSS S1]   audio rms_ref=0.8276 (onset-excluded)
-[CLSS S1]   audio SLB saved: 67f  mean=0.2131
-[CLSS S1]   audio ref saved: 67f (tail[26:93], tail_len=127, next_ov=34f)  mean=0.2736
+[CLSS S1]   audio RMS=0.8424  peak_frame=38/127  seg_rms=[0.824 0.950 0.822 0.776]
+[CLSS S1]   audio freq_energy(ref)=[0.670 0.734 0.658 0.735 0.651 0.741 0.660 0.667 0.720 0.768 0.880 0.831 0.640 0.636 0.514 0.516]
+[CLSS S1]   audio rms_ref=0.8404 (onset-excluded)
+[CLSS S1]   audio SLB saved: 67f  mean=0.2150
+[CLSS S1]   audio ref saved: 67f (tail[26:93], tail_len=127, next_ov=34f)  mean=0.2823
 [CLSS S1] ── Chunk 2/10 ── t=[5.33s:10.67s] ──────────────────
 [CLSS S1]   video lf total=20 (overlap=4+new=16) scene=1/1 video_SLB=yes(tau_c=0.05)  audio_ref=yes
 [CLSS S1]   video tau_c_eff=0.0500 (base=0.05, ceiling=0.1)
-[CLSS S1]   audio SLB: OFF (reference design — overlap audio regenerated at mask=1 and dropped; continuity via ref_audio only)
-[CLSS S1]   audio ref_audio injected: 67 tokens mean=0.2736 std=0.8318 nan=False inf=False
-[CLSS S1]   audio in: chunk_af=168 (slb=34f tau_c + overlap_rest=0f + new=134f) mask_mean=1.000
+[CLSS S1]   audio SLB: 34f  tau_c_eff=0.0500 (base=0.05, ceiling=0.15)  mean=0.1753
+[CLSS S1]   audio ref_audio injected: 67 tokens mean=0.2823 std=0.8398 nan=False inf=False
+[CLSS S1]   audio in: chunk_af=168 (slb=34f tau_c + overlap_rest=0f + new=134f) mask_mean=0.808
 [CLSS S1]   noise pos=16 a_pos=127 fingerprint=[-2.720240592956543, 1.0552363395690918, -0.8752263188362122, 0.006546139717102051]
-  0%|                                                                                                                                      | 0/20 [00:00<?, ?it/s,   Model Initializing ...  ][CLSS AVGuiderV2] step-1 stg_diff_norm: vid=94.0460  aud=26.0275  (0 would mean the self-attn skip is inert)
+  0%|                                                                                                                                      | 0/20 [00:00<?, ?it/s,   Model Initializing ...  ][CLSS AVGuiderV2] step-1 stg_diff_norm: vid=88.7197  aud=26.7121  (0 would mean the self-attn skip is inert)
 [CLSS AVGuiderV2] active: video_cfg=4.0  audio_cfg=7.0  modality=1.0  stg=v1.0/a1.0@blk[28]  rescale=0.70  passes/step=3
-100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 20/20 [07:09<00:00, 21.49s/it]
-[CLSS] chunk=1  ema_mu=0.0081  ema_sigma=0.8394  adain_delta_mean=-0.00544  delta_std=-0.02238
-[CLSS] chunk=1  band_gain=[1.0000, 0.9962, 0.9883, 0.9962]  band_E=[9.662e+02, 6.366e+02, 7.849e+02, 5.550e+02]  band_Eref=[7.306e+02, 6.788e+02, 7.772e+02, 6.294e+02]
-[CLSS S1]   detail anchor: E_low 0.3408→0.3299 (g=0.9839)  E_high 0.3626→0.3525 (g=0.9861)  hf_share 0.5155→0.5166 (ref=0.5166)
-[CLSS S1]   origin_sim/frame: [0.626, 0.429, 0.311, 0.247, 0.274, 0.299, 0.236, 0.192, 0.195, 0.222, 0.249, 0.222, 0.181, 0.12, 0.155, 0.225]
-[CLSS S1]   layout_sim/frame: [0.513, -0.099, -0.233, -0.32, -0.449, -0.083, -0.283, -0.535, -0.522, -0.313, 0.349, 0.41, 0.116, -0.315, 0.102, 0.437]  (coarse layout vs scene-first)
-[CLSS] chunk=1  anchors: bank_size=1  last_frame_max_sim=0.3774  new_anchor=False  scene_change_streak=1  bank_frame_ids=[15]
-[CLSS S1]   video done: pre_AdaIN mean=0.0216 std=0.9366 | post_AdaIN mean=0.0159 std=0.8961 | video_SLB updated shape=torch.Size([1, 128, 8, 11, 20])
-[CLSS S1]   boundary_sim=0.7777  intra_chunk_sim=0.5075
-[CLSS S1]   identity_sim=0.7777 (bank=1, equiv chunk-1) vs anchor@frame15
-[CLSS S1]   audio out: aud_out shape=[1, 8, 168, 16] mean=0.1409 std=0.7165 min=-3.1925 max=2.8209 nan=False inf=False
+100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 20/20 [07:22<00:00, 22.14s/it]
+[CLSS] chunk=1  ema_mu=0.0050  ema_sigma=0.8039  adain_delta_mean=-0.01966  delta_std=-0.02133
+[CLSS] chunk=1  band_gain=[1.0000, 0.9962, 0.9950, 0.9929]  band_E=[8.496e+02, 6.262e+02, 6.552e+02, 5.103e+02]  band_Eref=[7.387e+02, 6.257e+02, 6.974e+02, 5.481e+02]
+[CLSS S1]   detail anchor: E_low 0.3441→0.3249 (g=0.9716)  E_high 0.2875→0.3075 (g=1.0341)  hf_share 0.4552→0.4863 (ref=0.4863)
+[CLSS S1]   origin_sim/frame: [0.594, 0.358, 0.268, 0.203, 0.221, 0.219, 0.152, 0.115, 0.119, 0.096, 0.191, 0.177, 0.206, 0.138, 0.138, 0.267]
+[CLSS S1]   layout_sim/frame: [0.714, 0.172, -0.175, -0.287, -0.365, -0.286, -0.173, -0.257, -0.294, -0.408, -0.381, -0.37, -0.29, -0.394, -0.354, -0.2]  (coarse layout vs scene-first)
+[CLSS] chunk=1  anchors: bank_size=1  last_frame_max_sim=0.6679  new_anchor=False  scene_change_streak=1  bank_frame_ids=[15]
+[CLSS S1]   video done: pre_AdaIN mean=0.0542 std=0.8869 | post_AdaIN mean=0.0335 std=0.8628 | video_SLB updated shape=torch.Size([1, 128, 8, 11, 20])
+[CLSS S1]   boundary_sim=0.7957  intra_chunk_sim=0.5740
+[CLSS S1]   identity_sim=0.7957 (bank=1, equiv chunk-1) vs anchor@frame15
+[CLSS S1]   audio out: aud_out shape=[1, 8, 168, 16] mean=0.1903 std=0.8003 min=-2.7220 max=3.7156 nan=False inf=False
 [CLSS S1]   audio acc: new_aud af=[127:261] (134f kept, 34f overlap-time dropped)
-[CLSS S1]   audio SLB honored: 0.4368 (expect ≥0.97)
-[CLSS S1]   audio first-8f per-ch absmax: [2.009 1.945 1.668 1.242 2.320 1.388 1.473 2.125]  ch_std: [0.473 0.523 0.553 0.609 0.832 0.539 0.593 0.636]
-[CLSS S1]   audio_env_corr(prev)=-0.080  (>0.7 = same loudness gesture repeating each chunk)
-[CLSS S1]   audio_within_chunk_sim: 0.713 → 0.819
-[CLSS S1]   audio_boundary_sim=0.3679
-[CLSS S1]   audio RMS=0.7132  peak_frame=109/134  seg_rms=[0.735 0.729 0.660 0.723]
-[CLSS S1]   audio freq_energy=[0.513 0.490 0.480 0.605 0.502 0.494 0.570 0.578 0.599 0.688 0.741 0.838 0.722 0.399 0.455 0.428]  ratio=[0.79 0.69 0.78 0.83 0.79 0.68 0.89 0.87 0.85 0.90 0.86 1.01 1.16 0.64 0.88 0.83]
-[CLSS S1]   audio anchor→RMS-only(ref-exact, ±5%): rms 0.7132→0.8161 (g=1.1443, ema_rms=0.8161, rms0=0.8276)
-[CLSS S1]   audio SLB saved: 67f  mean=0.1872
-[CLSS S1]   audio ref saved: 67f (tail[17:84], tail_len=134, next_ov=50f)  mean=0.1699
+[CLSS S1]   audio SLB honored: 1.0000 (expect ≥0.97)
+[CLSS S1]   audio first-8f per-ch absmax: [1.423 2.220 1.622 1.560 3.052 1.105 1.743 1.137]  ch_std: [0.499 0.836 0.672 0.717 0.984 0.666 0.943 0.561]
+[CLSS S1]   audio_env_corr(prev)=-0.510  (>0.7 = same loudness gesture repeating each chunk)
+[CLSS S1]   audio_within_chunk_sim: 0.867 → 0.770
+[CLSS S1]   audio_boundary_sim=0.8488
+[CLSS S1]   audio RMS=0.8345  peak_frame=118/134  seg_rms=[0.782 0.710 0.873 0.949]
+[CLSS S1]   audio freq_energy=[0.649 0.715 0.695 0.693 0.638 0.685 0.627 0.624 0.760 0.825 0.892 0.823 0.718 0.487 0.392 0.458]  ratio=[0.97 0.97 1.06 0.94 0.98 0.92 0.95 0.94 1.06 1.07 1.01 0.99 1.12 0.77 0.76 0.89]
+[CLSS S1]   audio anchor→RMS-only(ref-exact, ±5%): rms 0.8345→0.8398 (g=1.0064, ema_rms=0.8398, rms0=0.8404)
+[CLSS S1]   audio SLB saved: 67f  mean=0.2846
+[CLSS S1]   audio ref saved: 67f (tail[17:84], tail_len=134, next_ov=50f)  mean=0.1574
 [CLSS S1] ── Chunk 3/10 ── t=[10.67s:16.00s] ──────────────────
 [CLSS S1]   video lf total=22 (overlap=6+new=16) scene=1/1 video_SLB=yes(tau_c=0.05)  audio_ref=yes
 [CLSS S1]   video tau_c_eff=0.0565 (base=0.05, ceiling=0.1)
-[CLSS S1]   audio SLB: OFF (reference design — overlap audio regenerated at mask=1 and dropped; continuity via ref_audio only)
-[CLSS S1]   audio ref_audio injected: 67 tokens mean=0.1699 std=0.8291 nan=False inf=False
-[CLSS S1]   audio in: chunk_af=184 (slb=50f tau_c + overlap_rest=0f + new=134f) mask_mean=1.000
+[CLSS S1]   audio SLB: 50f  tau_c_eff=0.0629 (base=0.05, ceiling=0.15)  mean=0.2901
+[CLSS S1]   audio ref_audio injected: 67 tokens mean=0.1574 std=0.7692 nan=False inf=False
+[CLSS S1]   audio in: chunk_af=184 (slb=50f tau_c + overlap_rest=0f + new=134f) mask_mean=0.745
 [CLSS S1]   noise pos=32 a_pos=261 fingerprint=[-1.971092939376831, 1.466765284538269, 0.03948277235031128, -0.6554286479949951]
-  0%|                                                                                                                                      | 0/20 [00:00<?, ?it/s,   Model Initializing ...  ][CLSS AVGuiderV2] step-1 stg_diff_norm: vid=156.2595  aud=14.3128  (0 would mean the self-attn skip is inert)
+  0%|                                                                                                                                      | 0/20 [00:00<?, ?it/s,   Model Initializing ...  ][CLSS AVGuiderV2] step-1 stg_diff_norm: vid=90.7228  aud=28.1580  (0 would mean the self-attn skip is inert)
 [CLSS AVGuiderV2] active: video_cfg=4.0  audio_cfg=7.0  modality=1.0  stg=v1.0/a1.0@blk[28]  rescale=0.70  passes/step=3
-100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 20/20 [07:39<00:00, 22.98s/it]
-[CLSS] chunk=2  ema_mu=0.0089  ema_sigma=0.8416  adain_delta_mean=-0.00163  delta_std=-0.01761
-[CLSS] chunk=2  band_gain=[1.0000, 0.9952, 0.9793, 0.9947]  band_E=[8.445e+02, 6.464e+02, 8.408e+02, 5.503e+02]  band_Eref=[7.542e+02, 6.741e+02, 7.760e+02, 6.216e+02]
-[CLSS S1]   detail anchor: E_low 0.3118→0.3299 (g=1.0286)  E_high 0.3761→0.3525 (g=0.9682)  hf_share 0.5467→0.5166 (ref=0.5166)
-[CLSS S1]   origin_sim/frame: [0.28, 0.219, 0.185, 0.136, 0.133, 0.121, 0.152, 0.137, 0.15, 0.222, 0.219, 0.212, 0.227, 0.322, 0.31, 0.26]
-[CLSS S1]   layout_sim/frame: [0.701, 0.68, 0.592, -0.122, -0.482, -0.584, -0.597, -0.588, -0.593, 0.151, -0.362, -0.512, -0.664, -0.322, 0.09, -0.408]  (coarse layout vs scene-first)
+100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 20/20 [07:53<00:00, 23.68s/it]
+[CLSS] chunk=2  ema_mu=0.0080  ema_sigma=0.8018  adain_delta_mean=-0.01000  delta_std=-0.01329
+[CLSS] chunk=2  band_gain=[1.0000, 0.9985, 0.9889, 0.9865]  band_E=[8.133e+02, 5.426e+02, 6.896e+02, 5.463e+02]  band_Eref=[7.498e+02, 6.252e+02, 6.923e+02, 5.436e+02]
+[CLSS S1]   detail anchor: E_low 0.3231→0.3249 (g=1.0027)  E_high 0.2975→0.3075 (g=1.0167)  hf_share 0.4793→0.4863 (ref=0.4863)
+[CLSS S1]   origin_sim/frame: [0.242, 0.203, 0.196, 0.141, 0.15, 0.217, 0.238, 0.227, 0.177, 0.222, 0.179, 0.201, 0.296, 0.316, 0.265, 0.181]
+[CLSS S1]   layout_sim/frame: [0.042, 0.096, 0.017, -0.355, -0.478, -0.49, -0.45, -0.314, -0.32, 0.158, -0.4, -0.31, -0.365, -0.218, -0.027, 0.263]  (coarse layout vs scene-first)
 [CLSS] chunk=2  anchors: bank_size=2  last_frame_max_sim=1.0000  new_anchor=True  scene_change_streak=0  bank_frame_ids=[15, 47]
-[CLSS S1]   video done: pre_AdaIN mean=0.0129 std=0.9224 | post_AdaIN mean=0.0117 std=0.8939 | video_SLB updated shape=torch.Size([1, 128, 8, 11, 20])
-[CLSS S1]   boundary_sim=0.7359  intra_chunk_sim=0.3707
-[CLSS S1]   identity_sim=0.5695 (bank_size=2) vs anchor@frame15
-[CLSS S1]   audio out: aud_out shape=[1, 8, 184, 16] mean=-0.0022 std=0.4923 min=-6.2555 max=3.5548 nan=False inf=False
+[CLSS S1]   video done: pre_AdaIN mean=0.0330 std=0.8711 | post_AdaIN mean=0.0231 std=0.8596 | video_SLB updated shape=torch.Size([1, 128, 8, 11, 20])
+[CLSS S1]   boundary_sim=0.9185  intra_chunk_sim=0.2679
+[CLSS S1]   identity_sim=0.6716 (bank_size=2) vs anchor@frame15
+[CLSS S1]   audio out: aud_out shape=[1, 8, 184, 16] mean=0.1793 std=0.7786 min=-2.9225 max=3.7624 nan=False inf=False
 [CLSS S1]   audio acc: new_aud af=[261:395] (134f kept, 50f overlap-time dropped)
-[CLSS S1]   audio SLB honored: 0.4266 (expect ≥0.97)
-[CLSS S1]   audio first-8f per-ch absmax: [1.230 1.062 0.969 1.346 1.438 1.191 0.990 1.199]  ch_std: [0.327 0.430 0.431 0.465 0.540 0.390 0.492 0.375]
-[CLSS S1]   audio_env_corr(prev)=-0.062  (>0.7 = same loudness gesture repeating each chunk)
-[CLSS S1]   audio_within_chunk_sim: 0.688 → 0.682
-[CLSS S1]   audio_boundary_sim=0.4294
-[CLSS S1]   audio RMS=0.4501  peak_frame=68/134  seg_rms=[0.464 0.461 0.443 0.431]
-[CLSS S1]   audio freq_energy=[0.385 0.353 0.349 0.383 0.363 0.388 0.357 0.350 0.354 0.352 0.403 0.457 0.321 0.284 0.276 0.254]  ratio=[0.59 0.49 0.57 0.53 0.57 0.53 0.56 0.52 0.50 0.46 0.47 0.55 0.52 0.45 0.53 0.49]
-[CLSS S1]   audio anchor→RMS-only(ref-exact, ±5%): rms 0.4501→0.7862 (g=1.7468, ema_rms=0.7862, rms0=0.8276)
-[CLSS S1]   audio SLB saved: 67f  mean=-0.0225
-[CLSS S1]   audio ref saved: 67f (tail[0:67], tail_len=134, next_ov=67f)  mean=-0.0624
+[CLSS S1]   audio SLB honored: 1.0000 (expect ≥0.97)
+[CLSS S1]   audio first-8f per-ch absmax: [2.099 1.442 1.742 2.117 2.439 2.111 2.082 1.632]  ch_std: [0.474 0.668 0.705 0.755 0.800 0.555 0.793 0.518]
+[CLSS S1]   audio_env_corr(prev)=-0.003  (>0.7 = same loudness gesture repeating each chunk)
+[CLSS S1]   audio_within_chunk_sim: 0.695 → 0.826
+[CLSS S1]   audio_boundary_sim=0.8693
+[CLSS S1]   audio RMS=0.7427  peak_frame=127/134  seg_rms=[0.718 0.739 0.771 0.729]
+[CLSS S1]   audio freq_energy=[0.656 0.671 0.784 0.609 0.590 0.647 0.604 0.576 0.675 0.622 0.604 0.691 0.555 0.355 0.310 0.304]  ratio=[0.98 0.91 1.19 0.83 0.91 0.87 0.92 0.86 0.94 0.81 0.69 0.83 0.87 0.56 0.60 0.59]
+[CLSS S1]   audio anchor→RMS-only(ref-exact, ±5%): rms 0.7427→0.8301 (g=1.1177, ema_rms=0.8301, rms0=0.8404)
+[CLSS S1]   audio SLB saved: 67f  mean=0.1568
+[CLSS S1]   audio ref saved: 67f (tail[0:67], tail_len=134, next_ov=67f)  mean=0.1501
 [CLSS S1] ── Chunk 4/10 ── t=[16.00s:21.33s] ──────────────────
 [CLSS S1]   video lf total=24 (overlap=8+new=16) scene=1/1 video_SLB=yes(tau_c=0.05)  audio_ref=yes
 [CLSS S1]   video tau_c_eff=0.0621 (base=0.05, ceiling=0.1)
-[CLSS S1]   audio SLB: OFF (reference design — overlap audio regenerated at mask=1 and dropped; continuity via ref_audio only)
-[CLSS S1]   audio ref_audio injected: 67 tokens mean=-0.0624 std=0.8102 nan=False inf=False
-[CLSS S1]   audio in: chunk_af=201 (slb=67f tau_c + overlap_rest=0f + new=134f) mask_mean=1.000
+[CLSS S1]   audio SLB: 67f  tau_c_eff=0.0742 (base=0.05, ceiling=0.15)  mean=0.1568
+[CLSS S1]   audio ref_audio injected: 67 tokens mean=0.1501 std=0.8018 nan=False inf=False
+[CLSS S1]   audio in: chunk_af=201 (slb=67f tau_c + overlap_rest=0f + new=134f) mask_mean=0.691
 [CLSS S1]   noise pos=48 a_pos=395 fingerprint=[-0.35421422123908997, 0.4637020230293274, -1.1013685464859009, -1.4326530694961548]
-  0%|                                                                                                                                      | 0/20 [00:00<?, ?it/s,   Model Initializing ...  ][CLSS AVGuiderV2] step-1 stg_diff_norm: vid=168.8793  aud=30.6370  (0 would mean the self-attn skip is inert)
+  0%|                                                                                                                                      | 0/20 [00:00<?, ?it/s,   Model Initializing ...  ][CLSS AVGuiderV2] step-1 stg_diff_norm: vid=109.2675  aud=36.5102  (0 would mean the self-attn skip is inert)
 [CLSS AVGuiderV2] active: video_cfg=4.0  audio_cfg=7.0  modality=1.0  stg=v1.0/a1.0@blk[28]  rescale=0.70  passes/step=3
-100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 20/20 [08:16<00:00, 24.82s/it]
-[CLSS] chunk=3  ema_mu=0.0091  ema_sigma=0.8435  adain_delta_mean=-0.00769  delta_std=-0.05826
-[CLSS] chunk=3  band_gain=[1.0000, 0.9922, 0.9550, 0.9822]  band_E=[9.980e+02, 7.092e+02, 9.702e+02, 6.034e+02]  band_Eref=[7.632e+02, 6.707e+02, 7.787e+02, 6.140e+02]
-[CLSS S1]   detail anchor: E_low 0.3447→0.3299 (g=0.9783)  E_high 0.4144→0.3525 (g=0.9223)  hf_share 0.5459→0.5166 (ref=0.5166)
-[CLSS S1]   origin_sim/frame: [0.337, 0.361, 0.335, 0.268, 0.317, 0.322, 0.28, 0.268, 0.294, 0.274, 0.3, 0.306, 0.265, 0.255, 0.296, 0.281]
-[CLSS S1]   layout_sim/frame: [-0.335, 0.03, 0.006, -0.369, -0.071, -0.037, -0.297, -0.143, -0.167, -0.039, -0.13, -0.239, -0.455, -0.474, -0.277, -0.211]  (coarse layout vs scene-first)
+100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 20/20 [08:24<00:00, 25.20s/it]
+[CLSS] chunk=3  ema_mu=0.0095  ema_sigma=0.7994  adain_delta_mean=-0.00397  delta_std=-0.03793
+[CLSS] chunk=3  band_gain=[1.0000, 0.9941, 0.9638, 0.9765]  band_E=[7.960e+02, 6.071e+02, 8.212e+02, 5.683e+02]  band_Eref=[7.562e+02, 6.168e+02, 6.901e+02, 5.423e+02]
+[CLSS S1]   detail anchor: E_low 0.3001→0.3249 (g=1.0404)  E_high 0.3509→0.3075 (g=0.9361)  hf_share 0.5390→0.4863 (ref=0.4863)
+[CLSS S1]   origin_sim/frame: [0.275, 0.279, 0.246, 0.209, 0.204, 0.214, 0.129, 0.163, 0.18, 0.194, 0.18, 0.174, 0.156, 0.208, 0.274, 0.2]
+[CLSS S1]   layout_sim/frame: [0.211, 0.132, 0.114, -0.295, -0.338, 0.03, -0.27, -0.273, -0.046, -0.04, 0.098, 0.239, -0.026, -0.272, 0.221, -0.297]  (coarse layout vs scene-first)
 [CLSS] chunk=3  anchors: bank_size=3  last_frame_max_sim=1.0000  new_anchor=True  scene_change_streak=0  bank_frame_ids=[15, 47, 63]
-[CLSS S1]   video done: pre_AdaIN mean=0.0283 std=1.0235 | post_AdaIN mean=0.0202 std=0.8983 | video_SLB updated shape=torch.Size([1, 128, 8, 11, 20])
-[CLSS S1]   boundary_sim=0.8421  intra_chunk_sim=0.7311
-[CLSS S1]   identity_sim=0.8421 (bank_size=3) vs anchor@frame47
-[CLSS S1]   audio out: aud_out shape=[1, 8, 201, 16] mean=-0.0249 std=0.5666 min=-6.7271 max=5.2196 nan=False inf=False
+[CLSS S1]   video done: pre_AdaIN mean=0.0194 std=0.9285 | post_AdaIN mean=0.0164 std=0.8630 | video_SLB updated shape=torch.Size([1, 128, 8, 11, 20])
+[CLSS S1]   boundary_sim=0.7828  intra_chunk_sim=0.3469
+[CLSS S1]   identity_sim=0.7828 (bank_size=3) vs anchor@frame47
+[CLSS S1]   audio out: aud_out shape=[1, 8, 201, 16] mean=0.1291 std=0.7974 min=-3.0714 max=3.4960 nan=False inf=False
 [CLSS S1]   audio acc: new_aud af=[395:529] (134f kept, 67f overlap-time dropped)
-[CLSS S1]   audio SLB honored: 0.3088 (expect ≥0.97)
-[CLSS S1]   audio first-8f per-ch absmax: [1.271 2.159 1.588 1.885 1.887 1.722 3.188 1.562]  ch_std: [0.420 0.506 0.583 0.636 0.614 0.503 0.607 0.476]
-[CLSS S1]   audio_env_corr(prev)=-0.185  (>0.7 = same loudness gesture repeating each chunk)
-[CLSS S1]   audio_within_chunk_sim: 0.557 → 0.525
-[CLSS S1]   audio_boundary_sim=0.2442
-[CLSS S1]   audio RMS=0.5553  peak_frame=96/134  seg_rms=[0.546 0.572 0.600 0.503]
-[CLSS S1]   audio freq_energy=[0.417 0.379 0.423 0.485 0.442 0.383 0.428 0.434 0.460 0.393 0.473 0.593 0.357 0.365 0.401 0.381]  ratio=[0.64 0.53 0.69 0.66 0.70 0.53 0.67 0.65 0.65 0.51 0.55 0.71 0.58 0.58 0.77 0.74]
-[CLSS S1]   audio anchor→RMS-only(ref-exact, ±5%): rms 0.5553→0.7862 (g=1.4158, ema_rms=0.7862, rms0=0.8276)
-[CLSS S1]   audio SLB saved: 67f  mean=-0.0627
-[CLSS S1]   audio ref saved: 67f (tail[33:100], tail_len=134, next_ov=34f)  mean=-0.0358
+[CLSS S1]   audio SLB honored: 1.0000 (expect ≥0.97)
+[CLSS S1]   audio first-8f per-ch absmax: [1.497 1.479 2.298 1.907 1.788 1.593 2.626 1.793]  ch_std: [0.565 0.761 0.848 0.773 0.814 0.679 0.844 0.665]
+[CLSS S1]   audio_env_corr(prev)=-0.035  (>0.7 = same loudness gesture repeating each chunk)
+[CLSS S1]   audio_within_chunk_sim: 0.417 → 0.381
+[CLSS S1]   audio_boundary_sim=0.8993
+[CLSS S1]   audio RMS=0.7858  peak_frame=43/134  seg_rms=[0.749 0.797 0.822 0.780]
+[CLSS S1]   audio freq_energy=[0.765 0.642 0.692 0.623 0.658 0.639 0.637 0.685 0.718 0.718 0.703 0.719 0.573 0.412 0.358 0.368]  ratio=[1.14 0.87 1.05 0.85 1.01 0.86 0.97 1.03 1.00 0.93 0.80 0.87 0.90 0.65 0.70 0.71]
+[CLSS S1]   audio anchor→RMS-only(ref-exact, ±5%): rms 0.7858→0.8257 (g=1.0508, ema_rms=0.8257, rms0=0.8404)
+[CLSS S1]   audio SLB saved: 67f  mean=0.0759
+[CLSS S1]   audio ref saved: 67f (tail[33:100], tail_len=134, next_ov=34f)  mean=0.0849
 [CLSS S1] ── Chunk 5/10 ── t=[21.33s:26.67s] ──────────────────
 [CLSS S1]   video lf total=20 (overlap=4+new=16) scene=1/1 video_SLB=yes(tau_c=0.05)  audio_ref=yes
 [CLSS S1]   video tau_c_eff=0.0670 (base=0.05, ceiling=0.1)
-[CLSS S1]   audio SLB: OFF (reference design — overlap audio regenerated at mask=1 and dropped; continuity via ref_audio only)
-[CLSS S1]   audio ref_audio injected: 67 tokens mean=-0.0358 std=0.8287 nan=False inf=False
-[CLSS S1]   audio in: chunk_af=168 (slb=34f tau_c + overlap_rest=0f + new=134f) mask_mean=1.000
+[CLSS S1]   audio SLB: 34f  tau_c_eff=0.0840 (base=0.05, ceiling=0.15)  mean=0.1499
+[CLSS S1]   audio ref_audio injected: 67 tokens mean=0.0849 std=0.8456 nan=False inf=False
+[CLSS S1]   audio in: chunk_af=168 (slb=34f tau_c + overlap_rest=0f + new=134f) mask_mean=0.815
 [CLSS S1]   noise pos=64 a_pos=529 fingerprint=[0.2834346890449524, -0.222079336643219, -0.5078138113021851, -1.7115795612335205]
-  0%|                                                                                                                                      | 0/20 [00:00<?, ?it/s,   Model Initializing ...  ][CLSS AVGuiderV2] step-1 stg_diff_norm: vid=165.0835  aud=26.1590  (0 would mean the self-attn skip is inert)
+  0%|                                                                                                                                      | 0/20 [00:00<?, ?it/s,   Model Initializing ...  ][CLSS AVGuiderV2] step-1 stg_diff_norm: vid=83.8349  aud=37.1638  (0 would mean the self-attn skip is inert)
 [CLSS AVGuiderV2] active: video_cfg=4.0  audio_cfg=7.0  modality=1.0  stg=v1.0/a1.0@blk[28]  rescale=0.70  passes/step=3
-100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 20/20 [07:20<00:00, 22.02s/it]
-[CLSS] chunk=4  ema_mu=0.0103  ema_sigma=0.8493  adain_delta_mean=-0.00002  delta_std=-0.01549
-[CLSS] chunk=4  band_gain=[1.0000, 0.9960, 0.9853, 0.9957]  band_E=[8.606e+02, 6.545e+02, 8.295e+02, 5.437e+02]  band_Eref=[7.867e+02, 6.734e+02, 7.891e+02, 6.108e+02]
-[CLSS S1]   detail anchor: E_low 0.2993→0.3299 (g=1.0499)  E_high 0.3810→0.3525 (g=0.9620)  hf_share 0.5600→0.5166 (ref=0.5166)
-[CLSS S1]   origin_sim/frame: [0.339, 0.33, 0.266, 0.23, 0.228, 0.182, 0.139, 0.133, 0.186, 0.214, 0.274, 0.303, 0.295, 0.254, 0.27, 0.288]
-[CLSS S1]   layout_sim/frame: [0.466, 0.554, 0.452, 0.211, 0.233, -0.152, -0.511, -0.444, -0.548, -0.401, -0.13, -0.365, -0.491, -0.509, -0.333, 0.275]  (coarse layout vs scene-first)
-[CLSS] chunk=4  anchors: bank_size=3  last_frame_max_sim=0.6536  new_anchor=False  scene_change_streak=1  bank_frame_ids=[15, 47, 63]
-[CLSS S1]   video done: pre_AdaIN mean=0.0103 std=0.9213 | post_AdaIN mean=0.0109 std=0.9018 | video_SLB updated shape=torch.Size([1, 128, 8, 11, 20])
-[CLSS S1]   boundary_sim=0.7739  intra_chunk_sim=0.8070
-[CLSS S1]   identity_sim=0.7739 (bank_size=3) vs anchor@frame63
-[CLSS S1]   audio out: aud_out shape=[1, 8, 168, 16] mean=0.0411 std=0.6483 min=-6.5534 max=3.5855 nan=False inf=False
+100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 20/20 [07:27<00:00, 22.38s/it]
+[CLSS] chunk=4  ema_mu=0.0101  ema_sigma=0.8026  adain_delta_mean=-0.01179  delta_std=-0.02055
+[CLSS] chunk=4  band_gain=[1.0000, 0.9942, 0.9855, 0.9965]  band_E=[8.178e+02, 6.365e+02, 7.243e+02, 4.969e+02]  band_Eref=[7.602e+02, 6.150e+02, 6.971e+02, 5.424e+02]
+[CLSS S1]   detail anchor: E_low 0.3166→0.3249 (g=1.0129)  E_high 0.3172→0.3075 (g=0.9845)  hf_share 0.5005→0.4863 (ref=0.4863)
+[CLSS S1]   origin_sim/frame: [0.285, 0.244, 0.201, 0.166, 0.186, 0.184, 0.08, 0.055, 0.144, 0.158, 0.223, 0.179, 0.16, 0.106, 0.113, 0.275]
+[CLSS S1]   layout_sim/frame: [0.484, 0.192, 0.092, -0.23, -0.205, 0.09, -0.29, -0.444, -0.31, -0.408, -0.383, -0.457, -0.402, -0.455, -0.407, -0.288]  (coarse layout vs scene-first)
+[CLSS] chunk=4  anchors: bank_size=3  last_frame_max_sim=0.6113  new_anchor=False  scene_change_streak=1  bank_frame_ids=[15, 47, 63]
+[CLSS S1]   video done: pre_AdaIN mean=0.0395 std=0.8919 | post_AdaIN mean=0.0282 std=0.8650 | video_SLB updated shape=torch.Size([1, 128, 8, 11, 20])
+[CLSS S1]   boundary_sim=0.4685  intra_chunk_sim=0.2626
+[CLSS S1]   identity_sim=0.5317 (bank_size=3) vs anchor@frame15
+[CLSS S1]   audio out: aud_out shape=[1, 8, 168, 16] mean=0.1686 std=0.8055 min=-3.3608 max=3.2772 nan=False inf=False
 [CLSS S1]   audio acc: new_aud af=[529:663] (134f kept, 34f overlap-time dropped)
-[CLSS S1]   audio SLB honored: 0.4472 (expect ≥0.97)
-[CLSS S1]   audio first-8f per-ch absmax: [1.764 1.634 1.573 1.898 2.710 1.148 1.237 2.187]  ch_std: [0.506 0.575 0.620 0.632 0.598 0.589 0.695 0.545]
-[CLSS S1]   audio_env_corr(prev)=-0.316  (>0.7 = same loudness gesture repeating each chunk)
-[CLSS S1]   audio_within_chunk_sim: 0.764 → 0.812
-[CLSS S1]   audio_boundary_sim=0.2929
-[CLSS S1]   audio RMS=0.6511  peak_frame=54/134  seg_rms=[0.623 0.678 0.644 0.659]
-[CLSS S1]   audio freq_energy=[0.569 0.480 0.435 0.465 0.400 0.417 0.427 0.456 0.528 0.582 0.726 0.998 0.477 0.355 0.383 0.368]  ratio=[0.88 0.67 0.71 0.64 0.63 0.57 0.67 0.68 0.75 0.76 0.84 1.20 0.77 0.57 0.74 0.72]
-[CLSS S1]   audio anchor→RMS-only(ref-exact, ±5%): rms 0.6511→0.7862 (g=1.2075, ema_rms=0.7862, rms0=0.8276)
-[CLSS S1]   audio SLB saved: 67f  mean=0.0872
-[CLSS S1]   audio ref saved: 67f (tail[17:84], tail_len=134, next_ov=50f)  mean=0.0767
+[CLSS S1]   audio SLB honored: 1.0000 (expect ≥0.97)
+[CLSS S1]   audio first-8f per-ch absmax: [1.951 2.642 2.369 3.073 2.144 2.307 3.277 1.930]  ch_std: [0.555 0.703 0.846 0.827 0.729 0.672 0.809 0.639]
+[CLSS S1]   audio_env_corr(prev)=-0.135  (>0.7 = same loudness gesture repeating each chunk)
+[CLSS S1]   audio_within_chunk_sim: 0.653 → 0.757
+[CLSS S1]   audio_boundary_sim=0.7569
+[CLSS S1]   audio RMS=0.8237  peak_frame=101/134  seg_rms=[0.881 0.773 0.784 0.854]
+[CLSS S1]   audio freq_energy=[0.803 0.649 0.729 0.640 0.601 0.601 0.585 0.664 0.672 0.759 0.811 0.892 0.677 0.447 0.401 0.449]  ratio=[1.20 0.88 1.11 0.87 0.92 0.81 0.89 1.00 0.93 0.99 0.92 1.07 1.06 0.70 0.78 0.87]
+[CLSS S1]   audio anchor→RMS-only(ref-exact, ±5%): rms 0.8237→0.8255 (g=1.0021, ema_rms=0.8255, rms0=0.8404)
+[CLSS S1]   audio SLB saved: 67f  mean=0.1794
+[CLSS S1]   audio ref saved: 67f (tail[17:84], tail_len=134, next_ov=50f)  mean=0.1408
 [CLSS S1] ── Chunk 6/10 ── t=[26.67s:32.00s] ──────────────────
 [CLSS S1]   video lf total=22 (overlap=6+new=16) scene=1/1 video_SLB=yes(tau_c=0.05)  audio_ref=yes
 [CLSS S1]   video tau_c_eff=0.0713 (base=0.05, ceiling=0.1)
-[CLSS S1]   audio SLB: OFF (reference design — overlap audio regenerated at mask=1 and dropped; continuity via ref_audio only)
-[CLSS S1]   audio ref_audio injected: 67 tokens mean=0.0767 std=0.8196 nan=False inf=False
-[CLSS S1]   audio in: chunk_af=184 (slb=50f tau_c + overlap_rest=0f + new=134f) mask_mean=1.000
+[CLSS S1]   audio SLB: 50f  tau_c_eff=0.0926 (base=0.05, ceiling=0.15)  mean=0.1878
+[CLSS S1]   audio ref_audio injected: 67 tokens mean=0.1408 std=0.7630 nan=False inf=False
+[CLSS S1]   audio in: chunk_af=184 (slb=50f tau_c + overlap_rest=0f + new=134f) mask_mean=0.753
 [CLSS S1]   noise pos=80 a_pos=663 fingerprint=[-1.0048421621322632, 0.13442116975784302, -1.1879997253417969, -0.3467865288257599]
-  0%|                                                                                                                                      | 0/20 [00:00<?, ?it/s,   Model Initializing ...  ][CLSS AVGuiderV2] step-1 stg_diff_norm: vid=127.3252  aud=17.6845  (0 would mean the self-attn skip is inert)
+  0%|                                                                                                                                      | 0/20 [00:00<?, ?it/s,   Model Initializing ...  ][CLSS AVGuiderV2] step-1 stg_diff_norm: vid=85.4423  aud=35.4736  (0 would mean the self-attn skip is inert)
 [CLSS AVGuiderV2] active: video_cfg=4.0  audio_cfg=7.0  modality=1.0  stg=v1.0/a1.0@blk[28]  rescale=0.70  passes/step=3
-100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 20/20 [07:52<00:00, 23.62s/it]
-[CLSS] chunk=5  ema_mu=0.0103  ema_sigma=0.8506  adain_delta_mean=+0.00987  delta_std=-0.04313
-[CLSS] chunk=5  band_gain=[1.0000, 0.9942, 0.9679, 0.9909]  band_E=[9.504e+02, 6.864e+02, 9.288e+02, 5.519e+02]  band_Eref=[7.941e+02, 6.709e+02, 7.905e+02, 6.036e+02]
-[CLSS S1]   detail anchor: E_low 0.3018→0.3299 (g=1.0454)  E_high 0.4172→0.3525 (g=0.9192)  hf_share 0.5803→0.5166 (ref=0.5166)
-[CLSS S1]   origin_sim/frame: [0.311, 0.285, 0.276, 0.247, 0.226, 0.251, 0.249, 0.253, 0.262, 0.278, 0.274, 0.264, 0.266, 0.272, 0.273, 0.247]
-[CLSS S1]   layout_sim/frame: [-0.034, 0.056, 0.315, 0.192, -0.259, 0.041, -0.186, -0.209, 0.253, 0.556, 0.592, 0.487, 0.38, 0.175, 0.231, -0.084]  (coarse layout vs scene-first)
-[CLSS] chunk=5  anchors: bank_size=3  last_frame_max_sim=0.8182  new_anchor=False  scene_change_streak=0  bank_frame_ids=[15, 47, 63]
-[CLSS S1]   video done: pre_AdaIN mean=-0.0144 std=0.9842 | post_AdaIN mean=-0.0046 std=0.9050 | video_SLB updated shape=torch.Size([1, 128, 8, 11, 20])
-[CLSS S1]   boundary_sim=0.9388  intra_chunk_sim=0.6300
-[CLSS S1]   identity_sim=0.6444 (bank_size=3) vs anchor@frame15
-[CLSS S1]   audio out: aud_out shape=[1, 8, 184, 16] mean=0.0048 std=0.6334 min=-5.9092 max=3.7589 nan=False inf=False
+100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 20/20 [07:51<00:00, 23.58s/it]
+[CLSS] chunk=5  ema_mu=0.0118  ema_sigma=0.8039  adain_delta_mean=+0.00250  delta_std=-0.01280
+[CLSS] chunk=5  band_gain=[1.0000, 0.9949, 0.9784, 0.9955]  band_E=[7.590e+02, 6.213e+02, 7.655e+02, 4.983e+02]  band_Eref=[7.659e+02, 6.164e+02, 6.976e+02, 5.375e+02]
+[CLSS S1]   detail anchor: E_low 0.2956→0.3249 (g=1.0483)  E_high 0.3235→0.3075 (g=0.9749)  hf_share 0.5225→0.4863 (ref=0.4863)
+[CLSS S1]   origin_sim/frame: [0.281, 0.214, 0.151, 0.17, 0.18, 0.232, 0.306, 0.294, 0.269, 0.311, 0.232, 0.243, 0.319, 0.277, 0.218, 0.197]
+[CLSS S1]   layout_sim/frame: [0.307, -0.123, -0.279, -0.424, -0.321, -0.084, 0.03, 0.101, -0.198, 0.545, 0.307, -0.182, -0.241, 0.08, 0.2, 0.09]  (coarse layout vs scene-first)
+[CLSS] chunk=5  anchors: bank_size=4  last_frame_max_sim=1.0000  new_anchor=True  scene_change_streak=0  bank_frame_ids=[15, 47, 63, 95]
+[CLSS S1]   video done: pre_AdaIN mean=0.0056 std=0.8795 | post_AdaIN mean=0.0087 std=0.8680 | video_SLB updated shape=torch.Size([1, 128, 8, 11, 20])
+[CLSS S1]   boundary_sim=0.5408  intra_chunk_sim=0.3013
+[CLSS S1]   identity_sim=0.5852 (bank_size=4) vs anchor@frame15
+[CLSS S1]   audio out: aud_out shape=[1, 8, 184, 16] mean=0.1205 std=0.7602 min=-3.3953 max=3.0345 nan=False inf=False
 [CLSS S1]   audio acc: new_aud af=[663:797] (134f kept, 50f overlap-time dropped)
-[CLSS S1]   audio SLB honored: 0.5805 (expect ≥0.97)
-[CLSS S1]   audio first-8f per-ch absmax: [2.274 1.915 1.154 1.848 2.063 1.494 1.088 1.324]  ch_std: [0.520 0.602 0.615 0.720 0.587 0.589 0.681 0.527]
-[CLSS S1]   audio_env_corr(prev)=-0.170  (>0.7 = same loudness gesture repeating each chunk)
-[CLSS S1]   audio_within_chunk_sim: 0.840 → 0.847
-[CLSS S1]   audio_boundary_sim=0.5320
-[CLSS S1]   audio RMS=0.6230  peak_frame=129/134  seg_rms=[0.576 0.628 0.617 0.665]
-[CLSS S1]   audio freq_energy=[0.603 0.487 0.533 0.511 0.451 0.493 0.364 0.449 0.420 0.471 0.546 0.678 0.366 0.405 0.445 0.430]  ratio=[0.93 0.68 0.87 0.70 0.71 0.68 0.57 0.67 0.59 0.61 0.63 0.82 0.59 0.65 0.86 0.84]
-[CLSS S1]   audio anchor→RMS-only(ref-exact, ±5%): rms 0.6230→0.7862 (g=1.2619, ema_rms=0.7862, rms0=0.8276)
-[CLSS S1]   audio SLB saved: 67f  mean=0.0564
-[CLSS S1]   audio ref saved: 67f (tail[0:67], tail_len=134, next_ov=67f)  mean=-0.0875
+[CLSS S1]   audio SLB honored: 1.0000 (expect ≥0.97)
+[CLSS S1]   audio first-8f per-ch absmax: [2.183 2.480 1.801 2.571 1.649 1.709 1.558 1.606]  ch_std: [0.606 0.695 0.772 0.796 0.711 0.593 0.794 0.631]
+[CLSS S1]   audio_env_corr(prev)=-0.338  (>0.7 = same loudness gesture repeating each chunk)
+[CLSS S1]   audio_within_chunk_sim: 0.637 → 0.715
+[CLSS S1]   audio_boundary_sim=0.7243
+[CLSS S1]   audio RMS=0.7337  peak_frame=64/134  seg_rms=[0.698 0.692 0.766 0.769]
+[CLSS S1]   audio freq_energy=[0.862 0.688 0.647 0.575 0.546 0.618 0.594 0.557 0.591 0.639 0.612 0.617 0.505 0.409 0.329 0.295]  ratio=[1.29 0.94 0.98 0.78 0.84 0.83 0.90 0.83 0.82 0.83 0.70 0.74 0.79 0.64 0.64 0.57]
+[CLSS S1]   audio anchor→RMS-only(ref-exact, ±5%): rms 0.7337→0.8163 (g=1.1126, ema_rms=0.8163, rms0=0.8404)
+[CLSS S1]   audio SLB saved: 67f  mean=0.1354
+[CLSS S1]   audio ref saved: 67f (tail[0:67], tail_len=134, next_ov=67f)  mean=0.0755
 [CLSS S1] ── Chunk 7/10 ── t=[32.00s:37.33s] ──────────────────
 [CLSS S1]   video lf total=24 (overlap=8+new=16) scene=1/1 video_SLB=yes(tau_c=0.05)  audio_ref=yes
 [CLSS S1]   video tau_c_eff=0.0750 (base=0.05, ceiling=0.1)
-[CLSS S1]   audio SLB: OFF (reference design — overlap audio regenerated at mask=1 and dropped; continuity via ref_audio only)
-[CLSS S1]   audio ref_audio injected: 67 tokens mean=-0.0875 std=0.7544 nan=False inf=False
-[CLSS S1]   audio in: chunk_af=201 (slb=67f tau_c + overlap_rest=0f + new=134f) mask_mean=1.000
+[CLSS S1]   audio SLB: 67f  tau_c_eff=0.1000 (base=0.05, ceiling=0.15)  mean=0.1354
+[CLSS S1]   audio ref_audio injected: 67 tokens mean=0.0755 std=0.7767 nan=False inf=False
+[CLSS S1]   audio in: chunk_af=201 (slb=67f tau_c + overlap_rest=0f + new=134f) mask_mean=0.700
 [CLSS S1]   noise pos=96 a_pos=797 fingerprint=[-2.2011661529541016, 2.3945462703704834, -1.0966826677322388, -0.16092056035995483]
-  0%|                                                                                                                                      | 0/20 [00:00<?, ?it/s,   Model Initializing ...  ][CLSS AVGuiderV2] step-1 stg_diff_norm: vid=133.3684  aud=17.5023  (0 would mean the self-attn skip is inert)
+  0%|                                                                                                                                      | 0/20 [00:00<?, ?it/s,   Model Initializing ...  ][CLSS AVGuiderV2] step-1 stg_diff_norm: vid=91.9946  aud=49.4787  (0 would mean the self-attn skip is inert)
 [CLSS AVGuiderV2] active: video_cfg=4.0  audio_cfg=7.0  modality=1.0  stg=v1.0/a1.0@blk[28]  rescale=0.70  passes/step=3
-100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 20/20 [08:20<00:00, 25.02s/it]
-[CLSS] chunk=6  ema_mu=0.0088  ema_sigma=0.8536  adain_delta_mean=+0.00375  delta_std=-0.02723
-[CLSS] chunk=6  band_gain=[1.0000, 0.9949, 0.9838, 0.9970]  band_E=[9.945e+02, 6.610e+02, 8.414e+02, 4.907e+02]  band_Eref=[8.097e+02, 6.715e+02, 7.978e+02, 5.973e+02]
-[CLSS S1]   detail anchor: E_low 0.2970→0.3299 (g=1.0538)  E_high 0.3918→0.3525 (g=0.9486)  hf_share 0.5688→0.5166 (ref=0.5166)
-[CLSS S1]   origin_sim/frame: [0.273, 0.282, 0.302, 0.275, 0.277, 0.291, 0.27, 0.265, 0.266, 0.26, 0.26, 0.256, 0.252, 0.251, 0.25, 0.25]
-[CLSS S1]   layout_sim/frame: [-0.184, 0.021, 0.145, -0.139, -0.046, 0.123, 0.061, 0.075, 0.133, 0.14, 0.001, -0.139, -0.273, -0.269, -0.267, -0.202]  (coarse layout vs scene-first)
-[CLSS] chunk=6  anchors: bank_size=4  last_frame_max_sim=1.0000  new_anchor=True  scene_change_streak=0  bank_frame_ids=[15, 47, 63, 111]
-[CLSS S1]   video done: pre_AdaIN mean=-0.0006 std=0.9485 | post_AdaIN mean=0.0034 std=0.9111 | video_SLB updated shape=torch.Size([1, 128, 8, 11, 20])
-[CLSS S1]   boundary_sim=0.8904  intra_chunk_sim=0.7779
-[CLSS S1]   identity_sim=0.7930 (bank_size=4) vs anchor@frame47
-[CLSS S1]   audio out: aud_out shape=[1, 8, 201, 16] mean=0.0022 std=0.5637 min=-6.3004 max=3.3202 nan=False inf=False
+100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 20/20 [08:22<00:00, 25.12s/it]
+[CLSS] chunk=6  ema_mu=0.0115  ema_sigma=0.8051  adain_delta_mean=+0.00474  delta_std=-0.04157
+[CLSS] chunk=6  band_gain=[1.0000, 0.9930, 0.9636, 0.9929]  band_E=[8.649e+02, 6.449e+02, 8.451e+02, 4.906e+02]  band_Eref=[7.652e+02, 6.162e+02, 7.009e+02, 5.331e+02]
+[CLSS S1]   detail anchor: E_low 0.2896→0.3249 (g=1.0591)  E_high 0.3652→0.3075 (g=0.9176)  hf_share 0.5577→0.4863 (ref=0.4863)
+[CLSS S1]   origin_sim/frame: [0.245, 0.304, 0.278, 0.24, 0.215, 0.235, 0.195, 0.16, 0.17, 0.205, 0.218, 0.206, 0.188, 0.203, 0.253, 0.207]
+[CLSS S1]   layout_sim/frame: [0.44, 0.639, 0.585, 0.296, 0.159, 0.231, -0.066, -0.158, -0.094, -0.115, -0.068, 0.066, -0.101, -0.149, 0.139, 0.133]  (coarse layout vs scene-first)
+[CLSS] chunk=6  anchors: bank_size=5  last_frame_max_sim=1.0000  new_anchor=True  scene_change_streak=0  bank_frame_ids=[15, 47, 63, 95, 111]
+[CLSS S1]   video done: pre_AdaIN mean=-0.0004 std=0.9407 | post_AdaIN mean=0.0049 std=0.8706 | video_SLB updated shape=torch.Size([1, 128, 8, 11, 20])
+[CLSS S1]   boundary_sim=0.8607  intra_chunk_sim=0.7100
+[CLSS S1]   identity_sim=0.8607 (bank_size=5) vs anchor@frame95
+[CLSS S1]   audio out: aud_out shape=[1, 8, 201, 16] mean=0.1131 std=0.8238 min=-3.0536 max=3.4043 nan=False inf=False
 [CLSS S1]   audio acc: new_aud af=[797:931] (134f kept, 67f overlap-time dropped)
-[CLSS S1]   audio SLB honored: 0.3644 (expect ≥0.97)
-[CLSS S1]   audio first-8f per-ch absmax: [1.980 2.065 1.339 1.717 1.381 1.111 2.146 1.291]  ch_std: [0.518 0.514 0.603 0.593 0.552 0.495 0.566 0.487]
-[CLSS S1]   audio_env_corr(prev)=-0.083  (>0.7 = same loudness gesture repeating each chunk)
-[CLSS S1]   audio_within_chunk_sim: 0.557 → 0.601
-[CLSS S1]   audio_boundary_sim=0.2065
-[CLSS S1]   audio RMS=0.5481  peak_frame=26/134  seg_rms=[0.549 0.555 0.524 0.555]
-[CLSS S1]   audio freq_energy=[0.464 0.389 0.373 0.462 0.389 0.359 0.431 0.397 0.392 0.444 0.559 0.668 0.334 0.400 0.431 0.407]  ratio=[0.72 0.55 0.61 0.63 0.62 0.49 0.67 0.60 0.56 0.58 0.65 0.80 0.54 0.64 0.83 0.79]
-[CLSS S1]   audio anchor→RMS-only(ref-exact, ±5%): rms 0.5481→0.7862 (g=1.4343, ema_rms=0.7862, rms0=0.8276)
-[CLSS S1]   audio SLB saved: 67f  mean=-0.0069
-[CLSS S1]   audio ref saved: 67f (tail[33:100], tail_len=134, next_ov=34f)  mean=-0.0052
+[CLSS S1]   audio SLB honored: 1.0000 (expect ≥0.97)
+[CLSS S1]   audio first-8f per-ch absmax: [1.744 2.246 2.588 2.051 2.567 1.542 2.148 1.746]  ch_std: [0.692 0.749 0.901 0.889 0.745 0.705 0.867 0.726]
+[CLSS S1]   audio_env_corr(prev)=-0.285  (>0.7 = same loudness gesture repeating each chunk)
+[CLSS S1]   audio_within_chunk_sim: 0.780 → 0.765
+[CLSS S1]   audio_boundary_sim=0.9000
+[CLSS S1]   audio RMS=0.8177  peak_frame=26/134  seg_rms=[0.831 0.768 0.837 0.838]
+[CLSS S1]   audio freq_energy=[0.915 0.770 0.742 0.644 0.605 0.658 0.718 0.633 0.662 0.727 0.715 0.698 0.555 0.467 0.366 0.340]  ratio=[1.37 1.05 1.13 0.88 0.93 0.89 1.09 0.95 0.92 0.95 0.81 0.84 0.87 0.73 0.71 0.66]
+[CLSS S1]   audio anchor→RMS-only(ref-exact, ±5%): rms 0.8177→0.8164 (g=0.9985, ema_rms=0.8164, rms0=0.8404)
+[CLSS S1]   audio SLB saved: 67f  mean=0.1145
+[CLSS S1]   audio ref saved: 67f (tail[33:100], tail_len=134, next_ov=34f)  mean=0.1082
 [CLSS S1] ── Chunk 8/10 ── t=[37.33s:42.67s] ──────────────────
 [CLSS S1]   video lf total=20 (overlap=4+new=16) scene=1/1 video_SLB=yes(tau_c=0.05)  audio_ref=yes
 [CLSS S1]   video tau_c_eff=0.0782 (base=0.05, ceiling=0.1)
-[CLSS S1]   audio SLB: OFF (reference design — overlap audio regenerated at mask=1 and dropped; continuity via ref_audio only)
-[CLSS S1]   audio ref_audio injected: 67 tokens mean=-0.0052 std=0.7752 nan=False inf=False
-[CLSS S1]   audio in: chunk_af=168 (slb=34f tau_c + overlap_rest=0f + new=134f) mask_mean=1.000
+[CLSS S1]   audio SLB: 34f  tau_c_eff=0.1065 (base=0.05, ceiling=0.15)  mean=0.0896
+[CLSS S1]   audio ref_audio injected: 67 tokens mean=0.1082 std=0.7961 nan=False inf=False
+[CLSS S1]   audio in: chunk_af=168 (slb=34f tau_c + overlap_rest=0f + new=134f) mask_mean=0.819
 [CLSS S1]   noise pos=112 a_pos=931 fingerprint=[0.039000868797302246, 1.4378759860992432, -2.0153911113739014, -1.858001947402954]
-  0%|                                                                                                                                      | 0/20 [00:00<?, ?it/s,   Model Initializing ...  ][CLSS AVGuiderV2] step-1 stg_diff_norm: vid=127.4725  aud=20.7673  (0 would mean the self-attn skip is inert)
+  0%|                                                                                                                                      | 0/20 [00:00<?, ?it/s,   Model Initializing ...  ][CLSS AVGuiderV2] step-1 stg_diff_norm: vid=93.0997  aud=46.2186  (0 would mean the self-attn skip is inert)
 [CLSS AVGuiderV2] active: video_cfg=4.0  audio_cfg=7.0  modality=1.0  stg=v1.0/a1.0@blk[28]  rescale=0.70  passes/step=3
-100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 20/20 [07:17<00:00, 21.87s/it]
-[CLSS] chunk=7  ema_mu=0.0082  ema_sigma=0.8544  adain_delta_mean=+0.00249  delta_std=-0.02848
-[CLSS] chunk=7  band_gain=[1.0000, 0.9966, 0.9857, 0.9990]  band_E=[1.032e+03, 6.431e+02, 8.377e+02, 4.809e+02]  band_Eref=[8.282e+02, 6.695e+02, 7.991e+02, 5.863e+02]
-[CLSS S1]   detail anchor: E_low 0.3035→0.3299 (g=1.0425)  E_high 0.3855→0.3525 (g=0.9563)  hf_share 0.5595→0.5166 (ref=0.5166)
-[CLSS S1]   origin_sim/frame: [0.26, 0.251, 0.248, 0.248, 0.253, 0.257, 0.252, 0.257, 0.238, 0.239, 0.243, 0.233, 0.234, 0.228, 0.22, 0.223]
-[CLSS S1]   layout_sim/frame: [-0.286, -0.22, 0.004, 0.168, 0.402, 0.336, 0.131, -0.11, -0.305, -0.255, -0.201, -0.159, -0.148, -0.181, -0.23, -0.163]  (coarse layout vs scene-first)
-[CLSS] chunk=7  anchors: bank_size=4  last_frame_max_sim=0.8974  new_anchor=False  scene_change_streak=0  bank_frame_ids=[15, 47, 63, 111]
-[CLSS S1]   video done: pre_AdaIN mean=0.0020 std=0.9507 | post_AdaIN mean=0.0047 std=0.9132 | video_SLB updated shape=torch.Size([1, 128, 8, 11, 20])
-[CLSS S1]   boundary_sim=0.9533  intra_chunk_sim=0.8365
-[CLSS S1]   identity_sim=0.9533 (bank_size=4) vs anchor@frame111
-[CLSS S1]   audio out: aud_out shape=[1, 8, 168, 16] mean=0.0779 std=0.7822 min=-3.2361 max=3.2087 nan=False inf=False
+100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 20/20 [07:25<00:00, 22.27s/it]
+[CLSS] chunk=7  ema_mu=0.0108  ema_sigma=0.8093  adain_delta_mean=+0.00023  delta_std=-0.03370
+[CLSS] chunk=7  band_gain=[1.0000, 0.9927, 0.9761, 0.9954]  band_E=[8.672e+02, 6.704e+02, 7.887e+02, 4.704e+02]  band_Eref=[7.752e+02, 6.181e+02, 7.085e+02, 5.281e+02]
+[CLSS S1]   detail anchor: E_low 0.2933→0.3249 (g=1.0525)  E_high 0.3479→0.3075 (g=0.9401)  hf_share 0.5426→0.4863 (ref=0.4863)
+[CLSS S1]   origin_sim/frame: [0.249, 0.232, 0.213, 0.185, 0.187, 0.172, 0.147, 0.127, 0.157, 0.223, 0.226, 0.205, 0.208, 0.155, 0.161, 0.248]
+[CLSS S1]   layout_sim/frame: [0.614, 0.431, 0.177, -0.1, 0.071, 0.198, 0.013, -0.126, -0.166, -0.017, 0.213, -0.109, -0.126, -0.262, -0.301, -0.041]  (coarse layout vs scene-first)
+[CLSS] chunk=7  anchors: bank_size=5  last_frame_max_sim=0.6253  new_anchor=False  scene_change_streak=1  bank_frame_ids=[15, 47, 63, 95, 111]
+[CLSS S1]   video done: pre_AdaIN mean=0.0102 std=0.9250 | post_AdaIN mean=0.0112 std=0.8766 | video_SLB updated shape=torch.Size([1, 128, 8, 11, 20])
+[CLSS S1]   boundary_sim=0.7298  intra_chunk_sim=0.5166
+[CLSS S1]   identity_sim=0.7298 (bank_size=5) vs anchor@frame111
+[CLSS S1]   audio out: aud_out shape=[1, 8, 168, 16] mean=0.0792 std=0.7728 min=-2.7771 max=2.9369 nan=False inf=False
 [CLSS S1]   audio acc: new_aud af=[931:1065] (134f kept, 34f overlap-time dropped)
-[CLSS S1]   audio SLB honored: 0.5839 (expect ≥0.97)
-[CLSS S1]   audio first-8f per-ch absmax: [1.902 2.833 2.246 2.164 2.236 2.779 2.081 1.815]  ch_std: [0.633 0.636 0.777 0.818 0.631 0.765 0.826 0.825]
-[CLSS S1]   audio_env_corr(prev)=-0.147  (>0.7 = same loudness gesture repeating each chunk)
-[CLSS S1]   audio_within_chunk_sim: 0.863 → 0.943
-[CLSS S1]   audio_boundary_sim=0.7318
-[CLSS S1]   audio RMS=0.7893  peak_frame=93/134  seg_rms=[0.641 0.788 0.857 0.849]
-[CLSS S1]   audio freq_energy=[0.606 0.479 0.472 0.562 0.531 0.518 0.520 0.623 0.651 0.908 0.974 1.125 0.438 0.390 0.463 0.423]  ratio=[0.93 0.67 0.77 0.77 0.84 0.71 0.81 0.93 0.92 1.18 1.13 1.35 0.71 0.62 0.89 0.82]
-[CLSS S1]   audio anchor→RMS-only(ref-exact, ±5%): rms 0.7893→0.7865 (g=0.9965, ema_rms=0.7865, rms0=0.8276)
-[CLSS S1]   audio SLB saved: 67f  mean=0.1189
-[CLSS S1]   audio ref saved: 67f (tail[17:84], tail_len=134, next_ov=50f)  mean=0.0546
+[CLSS S1]   audio SLB honored: 1.0000 (expect ≥0.97)
+[CLSS S1]   audio first-8f per-ch absmax: [2.071 2.406 2.678 2.739 2.583 1.162 1.803 1.771]  ch_std: [0.656 0.710 0.866 0.827 0.660 0.647 0.756 0.683]
+[CLSS S1]   audio_env_corr(prev)=-0.194  (>0.7 = same loudness gesture repeating each chunk)
+[CLSS S1]   audio_within_chunk_sim: 0.632 → 0.559
+[CLSS S1]   audio_boundary_sim=0.8514
+[CLSS S1]   audio RMS=0.7609  peak_frame=86/134  seg_rms=[0.723 0.772 0.809 0.736]
+[CLSS S1]   audio freq_energy=[0.955 0.726 0.718 0.640 0.580 0.615 0.645 0.530 0.510 0.644 0.616 0.630 0.462 0.414 0.362 0.333]  ratio=[1.43 0.99 1.09 0.87 0.89 0.83 0.98 0.79 0.71 0.84 0.70 0.76 0.72 0.65 0.70 0.64]
+[CLSS S1]   audio anchor→RMS-only(ref-exact, ±5%): rms 0.7609→0.8109 (g=1.0657, ema_rms=0.8109, rms0=0.8404)
+[CLSS S1]   audio SLB saved: 67f  mean=0.0767
+[CLSS S1]   audio ref saved: 67f (tail[17:84], tail_len=134, next_ov=50f)  mean=0.0302
 [CLSS S1] ── Chunk 9/10 ── t=[42.67s:48.00s] ──────────────────
 [CLSS S1]   video lf total=22 (overlap=6+new=16) scene=1/1 video_SLB=yes(tau_c=0.05)  audio_ref=yes
 [CLSS S1]   video tau_c_eff=0.0811 (base=0.05, ceiling=0.1)
-[CLSS S1]   audio SLB: OFF (reference design — overlap audio regenerated at mask=1 and dropped; continuity via ref_audio only)
-[CLSS S1]   audio ref_audio injected: 67 tokens mean=0.0546 std=0.7543 nan=False inf=False
-[CLSS S1]   audio in: chunk_af=184 (slb=50f tau_c + overlap_rest=0f + new=134f) mask_mean=1.000
+[CLSS S1]   audio SLB: 50f  tau_c_eff=0.1121 (base=0.05, ceiling=0.15)  mean=0.1297
+[CLSS S1]   audio ref_audio injected: 67 tokens mean=0.0302 std=0.7711 nan=False inf=False
+[CLSS S1]   audio in: chunk_af=184 (slb=50f tau_c + overlap_rest=0f + new=134f) mask_mean=0.759
 [CLSS S1]   noise pos=128 a_pos=1065 fingerprint=[-0.37483832240104675, 1.1465089321136475, -0.7812927961349487, -0.1620825231075287]
-  0%|                                                                                                                                      | 0/20 [00:00<?, ?it/s,   Model Initializing ...  ][CLSS AVGuiderV2] step-1 stg_diff_norm: vid=154.9197  aud=17.5541  (0 would mean the self-attn skip is inert)
+  0%|                                                                                                                                      | 0/20 [00:00<?, ?it/s,   Model Initializing ...  ][CLSS AVGuiderV2] step-1 stg_diff_norm: vid=112.6666  aud=52.9975  (0 would mean the self-attn skip is inert)
 [CLSS AVGuiderV2] active: video_cfg=4.0  audio_cfg=7.0  modality=1.0  stg=v1.0/a1.0@blk[28]  rescale=0.70  passes/step=3
-100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 20/20 [07:46<00:00, 23.31s/it]
-[CLSS] chunk=8  ema_mu=0.0079  ema_sigma=0.8553  adain_delta_mean=-0.00589  delta_std=-0.02280
-[CLSS] chunk=8  band_gain=[1.0000, 0.9942, 0.9870, 0.9978]  band_E=[9.628e+02, 6.866e+02, 8.273e+02, 4.854e+02]  band_Eref=[8.486e+02, 6.663e+02, 8.002e+02, 5.757e+02]
-[CLSS S1]   detail anchor: E_low 0.3124→0.3299 (g=1.0275)  E_high 0.3722→0.3525 (g=0.9732)  hf_share 0.5436→0.5166 (ref=0.5166)
-[CLSS S1]   origin_sim/frame: [0.231, 0.222, 0.218, 0.223, 0.198, 0.205, 0.215, 0.209, 0.205, 0.193, 0.178, 0.156, 0.147, 0.151, 0.144, 0.134]
-[CLSS S1]   layout_sim/frame: [-0.082, -0.096, -0.18, -0.25, -0.454, -0.384, -0.378, -0.431, -0.237, -0.261, -0.429, -0.397, -0.473, -0.504, -0.558, -0.559]  (coarse layout vs scene-first)
-[CLSS] chunk=8  anchors: bank_size=4  last_frame_max_sim=0.8502  new_anchor=False  scene_change_streak=0  bank_frame_ids=[15, 47, 63, 111]
-[CLSS S1]   video done: pre_AdaIN mean=0.0226 std=0.9400 | post_AdaIN mean=0.0171 std=0.9108 | video_SLB updated shape=torch.Size([1, 128, 8, 11, 20])
-[CLSS S1]   boundary_sim=0.9686  intra_chunk_sim=0.6780
-[CLSS S1]   identity_sim=0.8694 (bank_size=4) vs anchor@frame111
-[CLSS S1]   audio out: aud_out shape=[1, 8, 184, 16] mean=0.0032 std=0.4996 min=-5.7313 max=3.5130 nan=False inf=False
+100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 20/20 [07:53<00:00, 23.68s/it]
+[CLSS] chunk=8  ema_mu=0.0107  ema_sigma=0.8122  adain_delta_mean=+0.00471  delta_std=+0.00355
+[CLSS] chunk=8  band_gain=[1.0000, 0.9962, 0.9922, 0.9966]  band_E=[7.286e+02, 6.142e+02, 7.103e+02, 4.598e+02]  band_Eref=[7.844e+02, 6.222e+02, 7.125e+02, 5.219e+02]
+[CLSS S1]   detail anchor: E_low 0.2807→0.3249 (g=1.0758)  E_high 0.3060→0.3075 (g=1.0025)  hf_share 0.5215→0.4863 (ref=0.4863)
+[CLSS S1]   origin_sim/frame: [0.233, 0.195, 0.194, 0.148, 0.158, 0.221, 0.281, 0.27, 0.218, 0.283, 0.214, 0.181, 0.301, 0.285, 0.204, 0.214]
+[CLSS S1]   layout_sim/frame: [0.093, 0.112, 0.089, -0.237, -0.361, -0.101, -0.257, 0.039, -0.25, 0.59, -0.065, -0.268, -0.223, 0.399, 0.423, 0.358]  (coarse layout vs scene-first)
+[CLSS] chunk=8  anchors: bank_size=5  last_frame_max_sim=0.8265  new_anchor=False  scene_change_streak=0  bank_frame_ids=[15, 47, 63, 95, 111]
+[CLSS S1]   video done: pre_AdaIN mean=-0.0011 std=0.8414 | post_AdaIN mean=0.0041 std=0.8737 | video_SLB updated shape=torch.Size([1, 128, 8, 11, 20])
+[CLSS S1]   boundary_sim=0.7801  intra_chunk_sim=0.2692
+[CLSS S1]   identity_sim=0.5815 (bank_size=5) vs anchor@frame15
+[CLSS S1]   audio out: aud_out shape=[1, 8, 184, 16] mean=0.1043 std=0.7937 min=-2.9533 max=3.1918 nan=False inf=False
 [CLSS S1]   audio acc: new_aud af=[1065:1199] (134f kept, 50f overlap-time dropped)
-[CLSS S1]   audio SLB honored: 0.5467 (expect ≥0.97)
-[CLSS S1]   audio first-8f per-ch absmax: [1.046 1.347 1.264 1.380 1.764 2.379 1.878 1.458]  ch_std: [0.390 0.433 0.445 0.433 0.505 0.401 0.480 0.408]
-[CLSS S1]   audio_env_corr(prev)=0.003  (>0.7 = same loudness gesture repeating each chunk)
-[CLSS S1]   audio_within_chunk_sim: 0.790 → 0.784
-[CLSS S1]   audio_boundary_sim=0.3884
-[CLSS S1]   audio RMS=0.4427  peak_frame=3/134  seg_rms=[0.436 0.491 0.440 0.402]
-[CLSS S1]   audio freq_energy=[0.384 0.333 0.358 0.374 0.359 0.375 0.327 0.309 0.273 0.323 0.418 0.544 0.292 0.284 0.306 0.284]  ratio=[0.59 0.47 0.58 0.51 0.57 0.52 0.51 0.46 0.39 0.42 0.48 0.65 0.47 0.45 0.59 0.55]
-[CLSS S1]   audio anchor→RMS-only(ref-exact, ±5%): rms 0.4427→0.7862 (g=1.7760, ema_rms=0.7862, rms0=0.8276)
-[CLSS S1]   audio SLB saved: 67f  mean=0.0082
-[CLSS S1]   audio ref saved: 67f (tail[0:67], tail_len=134, next_ov=67f)  mean=-0.0710
+[CLSS S1]   audio SLB honored: 1.0000 (expect ≥0.97)
+[CLSS S1]   audio first-8f per-ch absmax: [2.028 1.912 2.209 2.135 1.762 2.048 3.192 2.326]  ch_std: [0.685 0.708 0.840 0.819 0.615 0.634 0.788 0.692]
+[CLSS S1]   audio_env_corr(prev)=-0.046  (>0.7 = same loudness gesture repeating each chunk)
+[CLSS S1]   audio_within_chunk_sim: 0.648 → 0.705
+[CLSS S1]   audio_boundary_sim=0.3915
+[CLSS S1]   audio RMS=0.7764  peak_frame=49/134  seg_rms=[0.773 0.793 0.791 0.754]
+[CLSS S1]   audio freq_energy=[1.045 0.797 0.688 0.659 0.490 0.659 0.634 0.486 0.509 0.674 0.658 0.656 0.468 0.415 0.395 0.345]  ratio=[1.56 1.09 1.04 0.90 0.75 0.89 0.96 0.73 0.71 0.88 0.75 0.79 0.73 0.65 0.77 0.67]
+[CLSS S1]   audio anchor→RMS-only(ref-exact, ±5%): rms 0.7764→0.8074 (g=1.0400, ema_rms=0.8074, rms0=0.8404)
+[CLSS S1]   audio SLB saved: 67f  mean=0.0969
+[CLSS S1]   audio ref saved: 67f (tail[0:67], tail_len=134, next_ov=67f)  mean=0.0993
 [CLSS S1] ── Chunk 10/10 ── t=[48.00s:53.33s] ──────────────────
 [CLSS S1]   video lf total=24 (overlap=8+new=16) scene=1/1 video_SLB=yes(tau_c=0.05)  audio_ref=yes
 [CLSS S1]   video tau_c_eff=0.0835 (base=0.05, ceiling=0.1)
-[CLSS S1]   audio SLB: OFF (reference design — overlap audio regenerated at mask=1 and dropped; continuity via ref_audio only)
-[CLSS S1]   audio ref_audio injected: 67 tokens mean=-0.0710 std=0.8227 nan=False inf=False
-[CLSS S1]   audio in: chunk_af=201 (slb=67f tau_c + overlap_rest=0f + new=134f) mask_mean=1.000
+[CLSS S1]   audio SLB: 67f  tau_c_eff=0.1170 (base=0.05, ceiling=0.15)  mean=0.0969
+[CLSS S1]   audio ref_audio injected: 67 tokens mean=0.0993 std=0.8101 nan=False inf=False
+[CLSS S1]   audio in: chunk_af=201 (slb=67f tau_c + overlap_rest=0f + new=134f) mask_mean=0.706
 [CLSS S1]   noise pos=144 a_pos=1199 fingerprint=[-1.9784982204437256, 0.913416862487793, -0.549619197845459, -1.2913682460784912]
-  0%|                                                                                                                                      | 0/20 [00:00<?, ?it/s,   Model Initializing ...  ][CLSS AVGuiderV2] step-1 stg_diff_norm: vid=159.8665  aud=20.3656  (0 would mean the self-attn skip is inert)
+  0%|                                                                                                                                      | 0/20 [00:00<?, ?it/s,   Model Initializing ...  ][CLSS AVGuiderV2] step-1 stg_diff_norm: vid=103.2225  aud=49.2034  (0 would mean the self-attn skip is inert)
 [CLSS AVGuiderV2] active: video_cfg=4.0  audio_cfg=7.0  modality=1.0  stg=v1.0/a1.0@blk[28]  rescale=0.70  passes/step=3
-100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 20/20 [08:20<00:00, 25.05s/it]
-[CLSS] chunk=9  ema_mu=0.0087  ema_sigma=0.8554  adain_delta_mean=+0.00727  delta_std=-0.03313
-[CLSS] chunk=9  band_gain=[1.0000, 0.9942, 0.9731, 0.9901]  band_E=[9.217e+02, 6.918e+02, 9.093e+02, 5.419e+02]  band_Eref=[8.600e+02, 6.675e+02, 8.006e+02, 5.665e+02]
-[CLSS S1]   detail anchor: E_low 0.2911→0.3299 (g=1.0646)  E_high 0.4194→0.3525 (g=0.9168)  hf_share 0.5903→0.5166 (ref=0.5166)
-[CLSS S1]   origin_sim/frame: [0.154, 0.155, 0.158, 0.158, 0.168, 0.167, 0.166, 0.169, 0.167, 0.171, 0.167, 0.179, 0.166, 0.169, 0.165, 0.173]
-[CLSS S1]   layout_sim/frame: [-0.396, -0.024, -0.017, 0.091, 0.223, 0.257, 0.25, 0.299, 0.29, 0.373, 0.267, 0.274, 0.132, 0.018, -0.098, 0.009]  (coarse layout vs scene-first)
-[CLSS] chunk=9  anchors: bank_size=5  last_frame_max_sim=1.0000  new_anchor=True  scene_change_streak=0  bank_frame_ids=[15, 47, 63, 111, 159]
-[CLSS S1]   video done: pre_AdaIN mean=-0.0094 std=0.9662 | post_AdaIN mean=-0.0022 std=0.9050 | video_SLB updated shape=torch.Size([1, 128, 8, 11, 20])
-[CLSS S1]   boundary_sim=0.9453  intra_chunk_sim=0.7066
-[CLSS S1]   identity_sim=0.8442 (bank_size=5) vs anchor@frame111
-[CLSS S1]   per-frame adj sims (last chunk): [0.951, 0.972, 0.974, 0.977, 0.979, 0.987, 0.987, 0.987, 0.983, 0.987, 0.974, 0.978, 0.989, 0.986, 0.985]
-[CLSS S1]   audio out: aud_out shape=[1, 8, 201, 16] mean=0.0082 std=0.6786 min=-6.5883 max=3.1471 nan=False inf=False
+100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 20/20 [08:20<00:00, 25.02s/it]
+[CLSS] chunk=9  ema_mu=0.0100  ema_sigma=0.8110  adain_delta_mean=+0.00331  delta_std=-0.04848
+[CLSS] chunk=9  band_gain=[1.0000, 0.9915, 0.9641, 0.9921]  band_E=[9.316e+02, 7.106e+02, 8.600e+02, 4.859e+02]  band_Eref=[7.788e+02, 6.209e+02, 7.111e+02, 5.154e+02]
+[CLSS S1]   detail anchor: E_low 0.3161→0.3249 (g=1.0137)  E_high 0.3648→0.3075 (g=0.9181)  hf_share 0.5357→0.4863 (ref=0.4863)
+[CLSS S1]   origin_sim/frame: [0.276, 0.267, 0.239, 0.207, 0.248, 0.287, 0.222, 0.173, 0.158, 0.194, 0.247, 0.218, 0.165, 0.193, 0.224, 0.176]
+[CLSS S1]   layout_sim/frame: [0.517, 0.557, 0.343, -0.101, -0.073, 0.329, 0.311, -0.056, -0.136, -0.176, 0.04, 0.199, -0.311, -0.352, -0.187, -0.058]  (coarse layout vs scene-first)
+[CLSS] chunk=9  anchors: bank_size=6  last_frame_max_sim=1.0000  new_anchor=True  scene_change_streak=0  bank_frame_ids=[15, 47, 63, 95, 111, 159]
+[CLSS S1]   video done: pre_AdaIN mean=0.0017 std=0.9698 | post_AdaIN mean=0.0053 std=0.8747 | video_SLB updated shape=torch.Size([1, 128, 8, 11, 20])
+[CLSS S1]   boundary_sim=0.7900  intra_chunk_sim=0.5356
+[CLSS S1]   identity_sim=0.6698 (bank_size=6) vs anchor@frame47
+[CLSS S1]   per-frame adj sims (last chunk): [0.922, 0.867, 0.795, 0.870, 0.640, 0.796, 0.746, 0.969, 0.858, 0.617, 0.767, 0.593, 0.897, 0.722, 0.817]
+[CLSS S1]   audio out: aud_out shape=[1, 8, 201, 16] mean=0.0688 std=0.7951 min=-3.4510 max=3.2667 nan=False inf=False
 [CLSS S1]   audio acc: new_aud af=[1199:1333] (134f kept, 67f overlap-time dropped)
-[CLSS S1]   audio SLB honored: 0.4277 (expect ≥0.97)
-[CLSS S1]   audio first-8f per-ch absmax: [2.195 1.598 2.762 2.530 1.770 2.255 3.140 1.910]  ch_std: [0.638 0.573 0.832 0.680 0.628 0.611 0.753 0.613]
-[CLSS S1]   audio_env_corr(prev)=0.155  (>0.7 = same loudness gesture repeating each chunk)
-[CLSS S1]   audio_within_chunk_sim: 0.818 → 0.820
-[CLSS S1]   audio_boundary_sim=0.3489
-[CLSS S1]   audio RMS=0.6764  peak_frame=92/134  seg_rms=[0.698 0.657 0.676 0.678]
-[CLSS S1]   audio freq_energy=[0.536 0.504 0.480 0.544 0.459 0.537 0.541 0.406 0.440 0.549 0.651 1.006 0.486 0.448 0.469 0.451]  ratio=[0.83 0.71 0.78 0.75 0.73 0.74 0.85 0.61 0.62 0.71 0.75 1.21 0.78 0.72 0.91 0.88]
-[CLSS S1]   audio anchor→RMS-only(ref-exact, ±5%): rms 0.6764→0.7862 (g=1.1623, ema_rms=0.7862, rms0=0.8276)
-[CLSS S1]   audio SLB saved: 67f  mean=-0.0006
-[CLSS S1]   audio ref saved: 67f (tail[67:134], tail_len=134, next_ov=0f)  mean=-0.0006
-[CLSS] Stage 1 full_aud assembled: shape=[1, 8, 1333, 16] mean=0.0426 std=0.7921 nan=False inf=False
-[CLSS] Stage 1 full_aud post: shape=[1, 8, 1333, 16] mean=0.0427 std=0.7893 min=-4.4799 max=4.7432
+[CLSS S1]   audio SLB honored: 1.0000 (expect ≥0.97)
+[CLSS S1]   audio first-8f per-ch absmax: [2.219 2.136 1.786 1.614 1.537 1.678 1.438 1.633]  ch_std: [0.743 0.759 0.865 0.865 0.616 0.658 0.815 0.714]
+[CLSS S1]   audio_env_corr(prev)=-0.258  (>0.7 = same loudness gesture repeating each chunk)
+[CLSS S1]   audio_within_chunk_sim: 0.730 → 0.741
+[CLSS S1]   audio_boundary_sim=0.9162
+[CLSS S1]   audio RMS=0.7933  peak_frame=12/134  seg_rms=[0.792 0.826 0.722 0.827]
+[CLSS S1]   audio freq_energy=[1.085 0.802 0.695 0.663 0.529 0.693 0.715 0.507 0.521 0.629 0.588 0.636 0.496 0.439 0.435 0.401]  ratio=[1.62 1.09 1.06 0.90 0.81 0.94 1.08 0.76 0.72 0.82 0.67 0.76 0.78 0.69 0.85 0.78]
+[CLSS S1]   audio anchor→RMS-only(ref-exact, ±5%): rms 0.7933→0.8060 (g=1.0160, ema_rms=0.8060, rms0=0.8404)
+[CLSS S1]   audio SLB saved: 67f  mean=0.0469
+[CLSS S1]   audio ref saved: 67f (tail[67:134], tail_len=134, next_ov=0f)  mean=0.0469
+[CLSS] Stage 1 full_aud assembled: shape=[1, 8, 1333, 16] mean=0.1325 std=0.8113 nan=False inf=False
+[CLSS] Stage 1 full_aud post: shape=[1, 8, 1333, 16] mean=0.1327 std=0.8098 min=-3.5062 max=3.7393
 [CLSS] ═══ Stage 1 trend summary (first→last / drift / verdict) ═══
-    vid_std       : 0.894→0.905 (Δ+0.011) range=+0.019       [ok]
-    vid_ident     : 0.778→0.844 (Δ+0.066) min=0.570@ch3      [WARN]
-    vid_intra     : 0.115→0.707 (Δ+0.591) max=0.837@ch8      [ok]
-    vid_bnd       : 0.778→0.945 (Δ+0.168) min=0.736@ch3      [WARN]
-    vid_hf        : 0.517→0.517 (Δ+0.000) range=+0.000       [ok]
-    vid_origin    : 0.221→0.154 (Δ-0.068) range=+0.135       [WARN drift]
-    aud_env       : -0.080→0.155 (Δ+0.234) range=+0.470       [WARN drift]
-    aud_rms       : 0.827→0.786 (Δ-0.041) range=+0.041       [ok]
-    aud_bnd       : 0.368→0.349 (Δ-0.019) min=0.207@ch7      [WARN]
-    aud_slb       : 0.437→0.428 (Δ-0.009) min=0.309@ch4      [WARN]
-    aud_wc        : 0.643→0.820 (Δ+0.177) min=0.525@ch4      [WARN]
-    aud_hf        : 0.877→0.821 (Δ-0.057) range=+0.378       [ok]
+    vid_std       : 0.861→0.875 (Δ+0.014) range=+0.017       [ok]
+    vid_ident     : 0.796→0.670 (Δ-0.126) min=0.532@ch5      [WARN]
+    vid_intra     : 0.022→0.536 (Δ+0.514) max=0.710@ch7      [ok]
+    vid_bnd       : 0.796→0.790 (Δ-0.006) min=0.469@ch5      [WARN]
+    vid_hf        : 0.486→0.486 (Δ+0.000) range=+0.000       [ok]
+    vid_origin    : 0.161→0.158 (Δ-0.003) range=+0.107       [WARN drift]
+    aud_env       : -0.510→-0.258 (Δ+0.252) range=+0.507       [WARN drift]
+    aud_rms       : 0.842→0.806 (Δ-0.036) range=+0.036       [ok]
+    aud_bnd       : 0.849→0.916 (Δ+0.067) min=0.391@ch9      [WARN]
+    aud_slb       : 1.000→1.000 (Δ-0.000) min=1.000@ch10     [ok]
+    aud_wc        : 0.622→0.741 (Δ+0.120) min=0.381@ch4      [WARN]
+    aud_hf        : 0.885→0.772 (Δ-0.112) range=+0.230       [ok]
 [CLSS]   verdicts: vid_std/aud_rms/aud_hf check STABILITY (range); others check a floor. WARN = the likely failure locus.
 [CLSS] ═══ origin-drift events (largest per-frame drops vs scene-first; scene changes appear as events) ═══
-[CLSS]   t=   5.3s  lf= 16  chunk≈ 2  Δorigin_sim=-0.3743  (now 0.626)
-[CLSS]   t=   5.7s  lf= 17  chunk≈ 2  Δorigin_sim=-0.1965  (now 0.429)
-[CLSS]   t=   0.7s  lf=  2  chunk≈ 1  Δorigin_sim=-0.1388  (now 0.305)
-[CLSS]   t=   6.0s  lf= 18  chunk≈ 2  Δorigin_sim=-0.1187  (now 0.311)
-[CLSS]   t=   1.0s  lf=  3  chunk≈ 1  Δorigin_sim=-0.0836  (now 0.221)
-[CLSS]   t=  17.0s  lf= 51  chunk≈ 4  Δorigin_sim=-0.0670  (now 0.268)
+[CLSS]   t=   5.3s  lf= 16  chunk≈ 2  Δorigin_sim=-0.4063  (now 0.594)
+[CLSS]   t=   5.7s  lf= 17  chunk≈ 2  Δorigin_sim=-0.2356  (now 0.358)
+[CLSS]   t=  23.3s  lf= 70  chunk≈ 5  Δorigin_sim=-0.1039  (now 0.080)
+[CLSS]   t=   6.0s  lf= 18  chunk≈ 2  Δorigin_sim=-0.0901  (now 0.268)
+[CLSS]   t=  18.0s  lf= 54  chunk≈ 4  Δorigin_sim=-0.0854  (now 0.129)
+[CLSS]   t=  15.7s  lf= 47  chunk≈ 3  Δorigin_sim=-0.0840  (now 0.181)
 [CLSS] ═══ layout-drift events (largest per-frame drops in coarse scene layout vs scene-first) ═══
-[CLSS]   t=   0.7s  lf=  2  chunk≈ 1  Δlayout_sim=-0.9334  (now -0.299)
-[CLSS]   t=  11.7s  lf= 35  chunk≈ 3  Δlayout_sim=-0.7138  (now -0.122)
-[CLSS]   t=   5.7s  lf= 17  chunk≈ 2  Δlayout_sim=-0.6126  (now -0.099)
-[CLSS]   t=   3.0s  lf=  9  chunk≈ 1  Δlayout_sim=-0.5937  (now -0.368)
-[CLSS]   t=  14.0s  lf= 42  chunk≈ 3  Δlayout_sim=-0.5136  (now -0.362)
-[CLSS]   t=  15.7s  lf= 47  chunk≈ 3  Δlayout_sim=-0.4984  (now -0.408)
+[CLSS]   t=   3.7s  lf= 11  chunk≈ 1  Δlayout_sim=-0.6732  (now -0.261)
+[CLSS]   t=  46.0s  lf=138  chunk≈ 9  Δlayout_sim=-0.6548  (now -0.065)
+[CLSS]   t=  14.0s  lf= 42  chunk≈ 3  Δlayout_sim=-0.5579  (now -0.400)
+[CLSS]   t=   5.7s  lf= 17  chunk≈ 2  Δlayout_sim=-0.5424  (now 0.172)
+[CLSS]   t=   0.7s  lf=  2  chunk≈ 1  Δlayout_sim=-0.5396  (now -0.269)
+[CLSS]   t=  21.0s  lf= 63  chunk≈ 4  Δlayout_sim=-0.5183  (now -0.297)
 [CLSS] ═══ phase-lock check (clustered = same arc replayed every chunk) ═══
-    layout argmin frame/chunk: [4, 7, 12, 13, 8, 4, 12, 8, 15, 0]  → mode=4 (±1 covers 2/10) [ok]
-    audio peak frame/chunk   : [50, 109, 68, 96, 54, 129, 26, 93, 3, 92]  → mode=96 (±1 covers 1/10) [ok]
+    layout argmin frame/chunk: [4, 9, 5, 4, 11, 3, 7, 14, 4, 13]  → mode=4 (±1 covers 5/10) [ok]
+    audio peak frame/chunk   : [38, 118, 127, 43, 101, 64, 26, 86, 49, 12]  → mode=64 (±1 covers 1/10) [ok]
 [CLSS] VRAM after sampler cleanup: 15.21 GB free / 15.61 GB total
 [CLSS] ══════════ SETTINGS: CLSSStage2 ══════════
 [CLSS]   frames_per_chunk=0 (0=auto)  s2_overlap=0 (0=auto)  fps=24.0
@@ -378,75 +379,75 @@
 [CLSS] Stage 2: CLSS AdaIN/shrinkage corrections DISABLED — Stage 2 is closed-loop refinement, not open-loop generation.
 [CLSS S2] ── chunk 1/4 ──────────────────────────────
 [CLSS S2]   video lf=[0:40] t=[0.00s:13.33s] (40 new + 0 SLB)  tokens=35200
-[CLSS S2]   vid_in: shape=[1, 128, 40, 22, 40] mean=0.0092 std=0.8064 min=-8.0000 max=8.6875 nan=False inf=False
-[CLSS S2]   s1_aud[0:333]: shape=[1, 8, 333, 16] mean=0.1488 std=0.8068 min=-3.1375 max=4.1971 nan=False inf=False
+[CLSS S2]   vid_in: shape=[1, 128, 40, 22, 40] mean=0.0179 std=0.8158 min=-9.4375 max=7.6250 nan=False inf=False
+[CLSS S2]   s1_aud[0:333]: shape=[1, 8, 333, 16] mean=0.2047 std=0.8103 min=-3.2664 max=3.7393 nan=False inf=False
 [CLSS S2]   aud_in: af=[0:333] chunk_af=333 acc_a_pos=0  mask=0 (frozen)
 [INFO] Requested to load LTXAV
 [INFO] loaded partially; 8167.16 MB usable, 8118.46 MB loaded, 5706.71 MB offloaded, 53.73 MB buffer reserved, lowvram patches: 0
-100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 3/3 [03:30<00:00, 70.29s/it]
-[CLSS S2]   detail anchor: E_low g=1.0303  E_high g=0.9000  hf_share 0.4921→0.4251 (ref=0.3685)
-[CLSS S2]   vid_out(new): shape=[1, 128, 40, 22, 40] mean=0.0098 std=0.8434 min=-6.4842 max=6.3518 nan=False inf=False
-[CLSS S2]   boundary_sim=N/A(first)  intra_chunk_sim=0.2509
+100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 3/3 [03:27<00:00, 69.18s/it]
+[CLSS S2]   detail anchor: E_low g=1.0364  E_high g=0.9000  hf_share 0.4568→0.3881 (ref=0.3234)
+[CLSS S2]   vid_out(new): shape=[1, 128, 40, 22, 40] mean=0.0228 std=0.8519 min=-7.1694 max=7.3898 nan=False inf=False
+[CLSS S2]   boundary_sim=N/A(first)  intra_chunk_sim=-0.3224
 [CLSS S2]   identity_sim=1.0000 (reference, ambiguous in multi-scene)
-[CLSS S2]   per-frame adj sims: [0.201, 0.477, 0.787, 0.763, 0.820, 0.625, 0.804, 0.890, 0.879, 0.816, 0.783, 0.751, 0.806, 0.796, 0.801, 0.878, 0.916, 0.873, 0.920, 0.789, 0.721, 0.910, 0.933, 0.922, 0.859, 0.803, 0.798, 0.873, 0.589, 0.646, 0.662, 0.784, 0.856, 0.896, 0.862, 0.854, 0.934, 0.838, 0.908]
-[CLSS S2]   S1_fidelity[first]=0.9339  [CLSS S2]   S1_fidelity[mid]=0.9191  [CLSS S2]   S1_fidelity[last]=0.8858  
-[CLSS S2]   aud_out(frozen): shape=[1, 8, 333, 16] mean=0.1488 std=0.8068 min=-3.1375 max=4.1971 nan=False inf=False  frozen_verify_sim=1.0000
+[CLSS S2]   per-frame adj sims: [0.197, 0.629, 0.787, 0.761, 0.806, 0.733, 0.785, 0.795, 0.897, 0.845, 0.770, 0.795, 0.793, 0.832, 0.825, 0.884, 0.885, 0.906, 0.922, 0.951, 0.939, 0.949, 0.948, 0.873, 0.917, 0.824, 0.943, 0.902, 0.850, 0.800, 0.854, 0.956, 0.923, 0.952, 0.935, 0.921, 0.835, 0.947, 0.964]
+[CLSS S2]   S1_fidelity[first]=0.9190  [CLSS S2]   S1_fidelity[mid]=0.9803  [CLSS S2]   S1_fidelity[last]=0.9669  
+[CLSS S2]   aud_out(frozen): shape=[1, 8, 333, 16] mean=0.2047 std=0.8103 min=-3.2664 max=3.7393 nan=False inf=False  frozen_verify_sim=1.0000
 [CLSS S2]   audio_boundary_sim=N/A(first)
 [CLSS S2]   acc_audio total=333/1333 frames (25.0%  ≈13.32s/53.33s)
 [CLSS S2] ── chunk 2/4 ──────────────────────────────
 [CLSS S2]   video lf=[40:80] t=[13.33s:26.67s] (40 new + 13 SLB)  tokens=46640
-[CLSS S2]   vid_in: shape=[1, 128, 53, 22, 40] mean=0.0201 std=0.8100 min=-6.2500 max=7.0312 nan=False inf=False
-[CLSS S2]   s1_aud[333:666]: shape=[1, 8, 333, 16] mean=0.0041 std=0.7716 min=-3.8190 max=4.5135 nan=False inf=False
+[CLSS S2]   vid_in: shape=[1, 128, 53, 22, 40] mean=0.0203 std=0.8095 min=-7.1694 max=9.1875 nan=False inf=False
+[CLSS S2]   s1_aud[333:666]: shape=[1, 8, 333, 16] mean=0.1489 std=0.8122 min=-3.3680 max=3.6502 nan=False inf=False
 [CLSS S2]   aud_in: af=[333:666] chunk_af=333 acc_a_pos=333  mask=0 (frozen)
 [INFO] 0 models unloaded.
 [INFO] Unloaded partially: 2036.01 MB freed, 6082.45 MB remains loaded, 132.05 MB buffer reserved, lowvram patches: 141
-100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 3/3 [05:14<00:00, 104.70s/it]
-[CLSS S2]   detail anchor: E_low g=1.0251  E_high g=0.9000  hf_share 0.5134→0.4485 (ref=0.3701)
-[CLSS S2]   vid_out(new): shape=[1, 128, 40, 22, 40] mean=0.0219 std=0.8702 min=-6.0304 max=6.3184 nan=False inf=False
-[CLSS S2]   boundary_sim=0.7865  intra_chunk_sim=0.6100
-[CLSS S2]   identity_sim=0.1601 (ambiguous in multi-scene)
-[CLSS S2]   per-frame adj sims: [0.654, 0.728, 0.831, 0.843, 0.810, 0.923, 0.856, 0.821, 0.864, 0.816, 0.431, 0.740, 0.720, 0.870, 0.915, 0.945, 0.876, 0.933, 0.896, 0.735, 0.806, 0.677, 0.806, 0.692, 0.866, 0.843, 0.829, 0.807, 0.847, 0.919, 0.850, 0.741, 0.916, 0.862, 0.905, 0.900, 0.664, 0.792, 0.865]
-[CLSS S2]   S1_fidelity[first]=0.9065  [CLSS S2]   S1_fidelity[mid]=0.9434  [CLSS S2]   S1_fidelity[last]=0.9021  
-[CLSS S2]   aud_out(frozen): shape=[1, 8, 333, 16] mean=0.0041 std=0.7716 min=-3.8190 max=4.5135 nan=False inf=False  frozen_verify_sim=1.0000
-[CLSS S2]   audio_boundary_sim=0.5678 (seam @ t=13.33s)
+100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 3/3 [05:11<00:00, 103.84s/it]
+[CLSS S2]   detail anchor: E_low g=1.0482  E_high g=0.9000  hf_share 0.4602→0.3860 (ref=0.3229)
+[CLSS S2]   vid_out(new): shape=[1, 128, 40, 22, 40] mean=0.0187 std=0.8412 min=-6.3680 max=6.3902 nan=False inf=False
+[CLSS S2]   boundary_sim=0.9509  intra_chunk_sim=0.5568
+[CLSS S2]   identity_sim=-0.3578 (ambiguous in multi-scene)
+[CLSS S2]   per-frame adj sims: [0.941, 0.962, 0.933, 0.906, 0.832, 0.802, 0.832, 0.803, 0.862, 0.815, 0.739, 0.907, 0.747, 0.589, 0.802, 0.826, 0.839, 0.908, 0.803, 0.349, 0.672, 0.407, 0.605, 0.664, 0.761, 0.772, 0.712, 0.690, 0.814, 0.794, 0.879, 0.770, 0.796, 0.796, 0.789, 0.838, 0.746, 0.906, 0.680]
+[CLSS S2]   S1_fidelity[first]=0.9667  [CLSS S2]   S1_fidelity[mid]=0.9147  [CLSS S2]   S1_fidelity[last]=0.9277  
+[CLSS S2]   aud_out(frozen): shape=[1, 8, 333, 16] mean=0.1489 std=0.8122 min=-3.3680 max=3.6502 nan=False inf=False  frozen_verify_sim=1.0000
+[CLSS S2]   audio_boundary_sim=0.7783 (seam @ t=13.33s)
 [CLSS S2]   acc_audio total=666/1333 frames (50.0%  ≈26.65s/53.33s)
 [CLSS S2] ── chunk 3/4 ──────────────────────────────
 [CLSS S2]   video lf=[80:120] t=[26.67s:40.00s] (40 new + 13 SLB)  tokens=46640
-[CLSS S2]   vid_in: shape=[1, 128, 53, 22, 40] mean=0.0179 std=0.8136 min=-6.0304 max=9.4375 nan=False inf=False
-[CLSS S2]   s1_aud[666:1000]: shape=[1, 8, 334, 16] mean=0.0040 std=0.7707 min=-4.2804 max=4.7432 nan=False inf=False
+[CLSS S2]   vid_in: shape=[1, 128, 53, 22, 40] mean=0.0173 std=0.7896 min=-6.3680 max=5.6017 nan=False inf=False
+[CLSS S2]   s1_aud[666:1000]: shape=[1, 8, 334, 16] mean=0.0996 std=0.8063 min=-3.0286 max=3.3761 nan=False inf=False
 [CLSS S2]   aud_in: af=[666:1000] chunk_af=334 acc_a_pos=666  mask=0 (frozen)
 [INFO] loaded partially; 6188.74 MB usable, 6056.69 MB loaded, 7768.49 MB offloaded, 132.05 MB buffer reserved, lowvram patches: 0
-100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 3/3 [05:13<00:00, 104.67s/it]
-[CLSS S2]   detail anchor: E_low g=1.0304  E_high g=0.9000  hf_share 0.5629→0.4956 (ref=0.4102)
-[CLSS S2]   vid_out(new): shape=[1, 128, 40, 22, 40] mean=0.0066 std=0.8598 min=-5.2204 max=6.1626 nan=False inf=False
-[CLSS S2]   boundary_sim=0.7333  intra_chunk_sim=0.6722
-[CLSS S2]   identity_sim=-0.0501 (ambiguous in multi-scene)
-[CLSS S2]   per-frame adj sims: [0.889, 0.948, 0.890, 0.879, 0.947, 0.939, 0.872, 0.907, 0.917, 0.923, 0.818, 0.887, 0.877, 0.924, 0.795, 0.720, 0.867, 0.936, 0.940, 0.923, 0.962, 0.884, 0.936, 0.888, 0.854, 0.932, 0.918, 0.921, 0.965, 0.948, 0.894, 0.966, 0.888, 0.912, 0.949, 0.818, 0.903, 0.775, 0.946]
-[CLSS S2]   S1_fidelity[first]=0.8951  [CLSS S2]   S1_fidelity[mid]=0.8932  [CLSS S2]   S1_fidelity[last]=0.9224  
-[CLSS S2]   aud_out(frozen): shape=[1, 8, 334, 16] mean=0.0040 std=0.7707 min=-4.2804 max=4.7432 nan=False inf=False  frozen_verify_sim=1.0000
-[CLSS S2]   audio_boundary_sim=0.8425 (seam @ t=26.67s)
+100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 3/3 [05:11<00:00, 103.90s/it]
+[CLSS S2]   detail anchor: E_low g=1.0360  E_high g=0.9000  hf_share 0.4867→0.4171 (ref=0.3408)
+[CLSS S2]   vid_out(new): shape=[1, 128, 40, 22, 40] mean=0.0147 std=0.8207 min=-5.8765 max=5.4072 nan=False inf=False
+[CLSS S2]   boundary_sim=0.5629  intra_chunk_sim=0.2996
+[CLSS S2]   identity_sim=-0.1376 (ambiguous in multi-scene)
+[CLSS S2]   per-frame adj sims: [0.896, 0.725, 0.467, 0.848, 0.822, 0.824, 0.805, 0.593, 0.659, 0.810, 0.808, 0.751, 0.682, 0.581, 0.845, 0.810, 0.632, 0.908, 0.697, 0.779, 0.670, 0.754, 0.752, 0.904, 0.695, 0.824, 0.691, 0.729, 0.894, 0.517, 0.586, 0.614, 0.830, 0.859, 0.784, 0.889, 0.849, 0.888, 0.847]
+[CLSS S2]   S1_fidelity[first]=0.9280  [CLSS S2]   S1_fidelity[mid]=0.8923  [CLSS S2]   S1_fidelity[last]=0.9343  
+[CLSS S2]   aud_out(frozen): shape=[1, 8, 334, 16] mean=0.0996 std=0.8063 min=-3.0286 max=3.3761 nan=False inf=False  frozen_verify_sim=1.0000
+[CLSS S2]   audio_boundary_sim=0.9001 (seam @ t=26.67s)
 [CLSS S2]   acc_audio total=1000/1333 frames (75.0%  ≈40.01s/53.33s)
 [CLSS S2] ── chunk 4/4 ──────────────────────────────
 [CLSS S2]   video lf=[120:160] t=[40.00s:53.33s] (40 new + 13 SLB)  tokens=46640
-[CLSS S2]   vid_in: shape=[1, 128, 53, 22, 40] mean=0.0173 std=0.8222 min=-5.2204 max=5.5938 nan=False inf=False
-[CLSS S2]   s1_aud[1000:1333]: shape=[1, 8, 333, 16] mean=0.0142 std=0.7978 min=-4.4799 max=3.6580 nan=False inf=False
+[CLSS S2]   vid_in: shape=[1, 128, 53, 22, 40] mean=0.0211 std=0.7849 min=-4.8750 max=5.5000 nan=False inf=False
+[CLSS S2]   s1_aud[1000:1333]: shape=[1, 8, 333, 16] mean=0.0776 std=0.8045 min=-3.5062 max=3.3194 nan=False inf=False
 [CLSS S2]   aud_in: af=[1000:1333] chunk_af=333 acc_a_pos=1000  mask=0 (frozen)
 [INFO] loaded partially; 6144.92 MB usable, 6012.82 MB loaded, 7812.35 MB offloaded, 132.09 MB buffer reserved, lowvram patches: 0
-100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 3/3 [05:15<00:00, 105.04s/it]
-[CLSS S2]   detail anchor: E_low g=1.0231  E_high g=0.9000  hf_share 0.5413→0.4773 (ref=0.4052)
-[CLSS S2]   vid_out(new): shape=[1, 128, 40, 22, 40] mean=0.0135 std=0.8638 min=-6.9981 max=5.5891 nan=False inf=False
-[CLSS S2]   boundary_sim=0.8923  intra_chunk_sim=0.4294
-[CLSS S2]   identity_sim=0.0798 (ambiguous in multi-scene)
-[CLSS S2]   per-frame adj sims: [0.948, 0.911, 0.912, 0.937, 0.929, 0.960, 0.912, 0.915, 0.907, 0.875, 0.895, 0.949, 0.936, 0.967, 0.971, 0.988, 0.979, 0.984, 0.979, 0.970, 0.984, 0.971, 0.975, 0.973, 0.931, 0.977, 0.983, 0.987, 0.983, 0.974, 0.983, 0.983, 0.976, 0.958, 0.950, 0.965, 0.956, 0.965, 0.954]
-[CLSS S2]   S1_fidelity[first]=0.8988  [CLSS S2]   S1_fidelity[mid]=0.9314  [CLSS S2]   S1_fidelity[last]=0.8093  
-[CLSS S2]   aud_out(frozen): shape=[1, 8, 333, 16] mean=0.0142 std=0.7978 min=-4.4799 max=3.6580 nan=False inf=False  frozen_verify_sim=1.0000
-[CLSS S2]   audio_boundary_sim=0.3859 (seam @ t=40.00s)
+100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 3/3 [05:12<00:00, 104.17s/it]
+[CLSS S2]   detail anchor: E_low g=1.0205  E_high g=0.9000  hf_share 0.4987→0.4362 (ref=0.3523)
+[CLSS S2]   vid_out(new): shape=[1, 128, 40, 22, 40] mean=0.0158 std=0.8252 min=-5.3166 max=6.8312 nan=False inf=False
+[CLSS S2]   boundary_sim=0.7740  intra_chunk_sim=0.5562
+[CLSS S2]   identity_sim=0.0633 (ambiguous in multi-scene)
+[CLSS S2]   per-frame adj sims: [0.730, 0.679, 0.522, 0.728, 0.775, 0.842, 0.502, 0.701, 0.568, 0.775, 0.602, 0.913, 0.611, 0.724, 0.519, 0.416, 0.517, 0.720, 0.834, 0.728, 0.757, 0.461, 0.816, 0.730, 0.827, 0.813, 0.797, 0.831, 0.673, 0.712, 0.715, 0.924, 0.718, 0.593, 0.646, 0.473, 0.802, 0.696, 0.740]
+[CLSS S2]   S1_fidelity[first]=0.8992  [CLSS S2]   S1_fidelity[mid]=0.9665  [CLSS S2]   S1_fidelity[last]=0.9230  
+[CLSS S2]   aud_out(frozen): shape=[1, 8, 333, 16] mean=0.0776 std=0.8045 min=-3.5062 max=3.3194 nan=False inf=False  frozen_verify_sim=1.0000
+[CLSS S2]   audio_boundary_sim=0.8311 (seam @ t=40.00s)
 [CLSS S2]   acc_audio total=1333/1333 frames (100.0%  ≈53.33s/53.33s)
-[CLSS S2] full_refined_vid: shape=[1, 128, 160, 22, 40] mean=0.0130 std=0.8594 min=-6.9981 max=6.3518 nan=False inf=False
-[CLSS S2] full_refined_aud(frozen=S1): shape=[1, 8, 1333, 16] mean=0.0427 std=0.7893 min=-4.4799 max=4.7432 nan=False inf=False
+[CLSS S2] full_refined_vid: shape=[1, 128, 160, 22, 40] mean=0.0180 std=0.8348 min=-7.1694 max=7.3898 nan=False inf=False
+[CLSS S2] full_refined_aud(frozen=S1): shape=[1, 8, 1333, 16] mean=0.1327 std=0.8098 min=-3.5062 max=3.7393 nan=False inf=False
 [CLSS] ═══ Stage 2 trend summary ═══
-    fid_first       : 0.934→0.899 (min=0.895) [WARN]
-    fid_last        : 0.886→0.809 (min=0.809) [WARN]
-    aud_bnd         : 0.568→0.386 (min=0.386) [WARN]
+    fid_first       : 0.919→0.899 (min=0.899) [WARN]
+    fid_last        : 0.967→0.923 (min=0.923) [WARN]
+    aud_bnd         : 0.778→0.831 (min=0.778) [WARN]
 [CLSS]   S2 window seams at: 13.3s, 26.7s, 40.0s  (aud_bnd entries map to these, in order)
 [CLSS]   fid_last dropping across chunks = video softening toward the end; aud_bnd reflects the frozen Stage-1 audio's own continuity at these times (Stage 2 never re-rolls audio).

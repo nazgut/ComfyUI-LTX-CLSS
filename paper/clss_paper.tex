@@ -65,24 +65,41 @@ distilled-LoRA schedule at $2\times$ spatial resolution.
 
 We report matched text-to-video (T2V) and image-to-video (I2V) experiments:
 single-scene, $\approx53$-second clips generated as ten chunks
-($\text{new\_lf}=16$, $\text{overlap}=8$) under an identical seed and guidance
-stack (split per-modality CFG 4.0 video / 7.0 audio, STG 1.0 on both
-modalities at block 28, rescale 0.70; three transformer passes per step),
-differing only in the presence of a guide image.  Stage~1 holds video boundary
-cosine similarity at $0.92$--$0.97$ in I2V; a two-band spatial detail anchor
-holds the high-frequency energy share flat across the full run in both modes
-($0.510\to0.510$ I2V, $0.512\to0.520$ T2V), closing the progressive-softening
-channel, and a reference-exact RMS anchor holds audio loudness to its chunk-1
-level throughout ($\pm5\%$) against raw per-chunk drifts of up to $+72\%$
-(T2V).  Stage~2 ($2\times$ resolution, 3-step distilled refinement in four
+($\text{new\_lf}=16$, $\text{overlap}=8$, per-chunk phase-jittered) under an
+identical seed and guidance stack (split per-modality CFG 4.0 video / 7.0
+audio, STG 1.0 on both modalities at block 28, rescale 0.70; three transformer
+passes per step), differing only in the presence of a guide image.  Stage~1
+holds video boundary cosine similarity on a rising trajectory in I2V
+($0.79\to0.98$) and a flat first-to-last trajectory with a mid-run floor in
+the dynamic-content T2V run ($0.796\to0.790$, floor $0.469$ at chunk~5); a
+two-band spatial detail anchor holds the high-frequency energy share flat
+across the full run in both modes ($0.509\to0.509$ I2V, $0.486\to0.486$ T2V),
+closing the progressive-softening channel, and a reference-exact RMS anchor
+holds audio loudness to its chunk-1 level throughout ($\pm5\%$).  The
+per-chunk loudness-envelope repetition (the ``metronome'' of earlier
+chunked-audio runs) is diagnosed as a \emph{fixed point of the constant-shape
+chunk grid}: with a constant overlap, every continuation chunk denoises an
+identical window and keeps the same phase of the model's window arc, so the
+same loudness gesture recurs each chunk.  It is eliminated chunk-natively by a
+per-chunk overlap phase-jitter --- cycling the overlap through
+$[\text{full},\,\text{half},\,\tfrac34]$ of its configured value so no two
+consecutive chunks share a window shape --- which preserves arbitrary-length
+streaming and introduces no audio/video offset; with the phase lock broken
+structurally, the previously harmful audio SLB is restored as the
+content-continuity carrier and the RMS anchor keeps energy stability.  Against
+earlier matched runs, the loudness-envelope correlation drops from a sustained
+$0.76$--$0.96$ to $\le0.19$ at every hand-off ($-0.51$--$0.19$ across both
+runs), audio boundary similarity rises from
+$0.07$--$0.53$ to a $0.85$--$0.92$ typical band ($0.619\to0.918$ first-to-last
+in I2V, $0.849\to0.916$ in T2V), and both phase-lock detectors read fully
+scattered (peak mode covering $1/10$ chunks in each run).  Audio
+high-frequency energy growth, previously unbounded, is closed in T2V
+($0.885\to0.772$) and reduced to a mild residual in I2V ($0.881\to1.047$).
+Stage~2 ($2\times$ resolution, 3-step distilled refinement in four
 windows) refines video against frozen Stage-1 audio, with its own per-window
 detail anchor referenced to the upscaled Stage-1 slice; end-of-window fidelity
-to Stage-1 structure stays at $0.93$--$0.97$ (I2V).  Two failure modes are
-characterised rather than solved: a loudness-envelope repetition intrinsic to
-chunked autoregressive audio over a static prompt (shown immune to
-continuity-buffer, guidance-weight, and reference-perturbation interventions),
-and audio high-frequency energy growth over the run.  Total generation time is
-$\approx98$ minutes per clip in either mode on a single 16\,GB GPU.
+to Stage-1 structure stays at $0.91$--$0.97$ (I2V).  Total generation time is
+$\approx96$--$97$ minutes per clip on a single 16\,GB GPU.
 \end{abstract}
 
 %--------------------------------------------------------------------------
@@ -113,6 +130,14 @@ negligible computational overhead.
       spatial detail anchor that closes the progressive-softening channel the
       one-sided shrinkage leaves open
       (Sections~\ref{sec:renoise}--\ref{sec:detail}).
+\item A per-chunk \emph{overlap phase-jitter} mechanism that breaks the
+      fixed-point repetition of chunked autoregressive audio at the chunk-grid
+      level --- cycling the per-chunk overlap through
+      $[\text{full},\,\text{half},\,\tfrac34]$ of its configured value so no
+      two consecutive chunks share a window shape --- together with the audio
+      SLB it makes safe to restore as the content-continuity carrier, all
+      while preserving arbitrary-length streaming and exact audio/video
+      proportionality (Section~\ref{sec:jitter}).
 \item A linear stability analysis of the feedback loop in latent space,
       including an empirical per-chunk gain measurement protocol
       (Section~\ref{sec:stability}).
@@ -130,11 +155,14 @@ negligible computational overhead.
       \ref{sec:failures}).
 \item Matched $\approx53$-second T2V and I2V generations, identical seed and
       guidance stack, streamed as ten chunks each, isolating the effect of
-      visual conditioning on continuity and repetition, and characterising the
-      residual failure modes at this horizon --- including a loudness-envelope
-      repetition shown by intervention to be structural to chunked
-      autoregressive audio rather than tunable by any conditioning or guidance
-      knob (Sections~\ref{sec:experiments}, \ref{sec:failures}).
+      visual conditioning on continuity and drift, and resolving the
+      loudness-envelope repetition earlier runs exhibited: diagnosed as a
+      fixed point of the constant-shape chunk grid --- after being shown
+      immune to every conditioning- and guidance-level intervention, which is
+      exactly what motivated the grid-level diagnosis --- and eliminated by
+      the overlap phase-jitter plus the restored audio SLB
+      (Sections~\ref{sec:experiments}, \ref{sec:jitter},
+      \ref{sec:failures}).
 \end{enumerate}
 
 %--------------------------------------------------------------------------
@@ -340,8 +368,8 @@ fought harder than $\pm10$--$12\%$ per chunk, and a $\pm0.5\%$ dead-band makes
 the module a strict no-op when energies already match.  The same mechanism runs
 per-window in Stage~2, referenced there to the upscaled Stage-1 slice of the
 same window (Section~\ref{sec:twostage}).  In the reported runs it holds the
-Stage-1 high-frequency share flat end-to-end ($0.510\to0.510$ I2V,
-$0.512\to0.520$ T2V; Section~\ref{sec:experiments}).
+Stage-1 high-frequency share flat end-to-end ($0.509\to0.509$ I2V,
+$0.486\to0.486$ T2V; Section~\ref{sec:experiments}).
 
 \subsection{Stability Analysis}
 \label{sec:stability}
@@ -595,26 +623,41 @@ The effective video overlap is additionally clamped to $\text{new\_lf}$: the
 SLB can never carry more frames than a chunk produces, and unclamped values
 were measured to silently discard motion at every seam.
 
-\paragraph{Continuity via reference audio, not a buffer.}
-Following the reference pipeline, audio continuity is carried by
-\emph{conditioning}, not by a seeded buffer: the overlap-time audio of each
-continuation chunk is regenerated at full denoise and dropped, and the only
-carrier of audio history is a reference-audio window (\texttt{ref\_audio}
+\paragraph{Continuity via the audio SLB, restored.}
+Audio continuity is carried by two complementary conditioning paths.  The
+first is an audio analogue of the video SLB: the previous chunk's audio tail
+is seeded into the overlap region at $\tau_c$, so the model \emph{hears} what
+it continues rather than inferring it from context.  The buffer is stored at
+the configured maximum length and each chunk slices the tail matching its
+jittered overlap (Section~\ref{sec:jitter}); the freeze is verified
+numerically every chunk (\texttt{SLB honored}$=1.0000$ in both reported
+runs).  The second path is a reference-audio window (\texttt{ref\_audio}
 tokens at negative temporal RoPE) taken from the previous chunk's pre-overlap
-tail.  An audio analogue of the video SLB (seeding the overlap frames at
-$\tau_c$) exists as an option and was measured to make things worse when
-enabled: the buffer freezes the previous chunk's loudest tail into every
-chunk's opening, compounding into high-frequency runaway ($1.02\to1.51$ over
-ten chunks) and raw-RMS runaway that the energy anchor then fights with
-growing corrections.  The reference window is passed \emph{clean and at full
-length} (default 67\,af $\approx2$\,s, decoupled from the video overlap; an
-implicit coupling to $\text{overlap\_af}$ starved it at small overlaps and
-measurably collapsed within-chunk audio coherence from 0.91 to 0.27).
-Perturbing this reference --- blending in noise, shrinking its window over
-chunks, flattening its loudness envelope --- was each tested live and none
-reduced the envelope repetition it was aimed at, while the energy-injecting
-variants added audible hiss; the clean full-length reference is the measured
-optimum (Section~\ref{sec:failures}).
+tail and passed \emph{clean and at full length} (67\,af $\approx2$\,s,
+decoupled from the video overlap; an implicit coupling to
+$\text{overlap\_af}$ starved it at small overlaps and measurably collapsed
+within-chunk audio coherence from 0.91 to 0.27).  The SLB path has a
+confounded history worth recording.  Under a \emph{constant} overlap it was
+measured harmful and disabled: the buffer froze each chunk's loudest tail
+into the next chunk's opening, compounding into high-frequency runaway
+($1.02\to1.51$ over ten chunks) and raw-RMS runaway that the energy anchor
+then fought with growing corrections.  That left \texttt{ref\_audio} as the
+only carrier, which proved far too weak alone --- boundary cosine
+$0.07$--$0.53$ in I2V, with every chunk re-inventing its audio and speech
+rendered unintelligible.  In retrospect the SLB was blamed for a loop that
+lived in the chunk grid, not in the buffer: its ``harm'' was feeding the
+phase-locked fixed point analysed in Section~\ref{sec:jitter}.  With the
+phase lock broken structurally by the overlap jitter, the same SLB shows no
+runaway (T2V \texttt{aud\_hf} $0.885\to0.772$ over the run) and lifts
+boundary similarity to a $0.85$--$0.92$ typical band.  The division of labour
+is: \textbf{jitter = anti-repetition, audio SLB = content continuity, RMS
+anchor = energy stability}.  Perturbing the reference window itself ---
+blending in noise, shrinking its length over chunks, flattening its loudness
+envelope --- was each tested live against the repetition and none helped (the
+energy-injecting variants added audible hiss); those failures were what
+redirected the search from conditioning \emph{values} to the window
+\emph{shape} (Section~\ref{sec:failures}).  The clean full-length reference
+remains the measured optimum.
 
 \paragraph{Reference-exact RMS anchoring.}
 Un-anchored streaming audio is a divergent loop: runs were measured with RMS
@@ -624,9 +667,13 @@ whose drift from the chunk-1 reference (computed onset-excluded) is
 hard-capped at $\pm5\%$ (the same $\Delta_\sigma$ used for the video EMA),
 before the chunk's tail is fed forward as the next reference window.
 Anchoring \emph{before} feed-forward is what keeps the recursion safe at any
-sequence length.  In the T2V run this anchor absorbs a raw loudness drift of
-$0.54\to0.91$ ($+72\%$), holding output RMS at $0.81$--$0.84$ against a
-chunk-1 reference of $0.853$ (Section~\ref{sec:t2v_audio}).  On multi-scene
+sequence length.  In the T2V run this anchor absorbs raw per-chunk loudness
+excursions of $0.734$--$0.842$ against a chunk-1 onset-excluded reference of
+$0.8404$, holding output RMS at $0.806$--$0.840$ (largest correction gain
+$1.12$, chunk~3); in I2V it absorbs raw excursions of $-9\%$/$+19\%$
+($0.511$--$0.663$ against a reference of $0.5589$), holding output at
+$0.554$--$0.587$ with corrections of up to $14\%$ downward
+(Sections~\ref{sec:t2v_audio}, \ref{sec:i2v_audio}).  On multi-scene
 runs the anchor is re-baselined at scene changes; this is measurably a
 ratchet (each re-baseline legitimises accumulated loudness creep:
 $0.599\to0.699\to0.823$ over three scenes in one run) and remains a known
@@ -637,6 +684,59 @@ At each audio chunk boundary, a linear blend over $\pm2$ audio latent frames
 is applied in latent space before VAE decoding.  This eliminates click
 artifacts that arise from the abrupt splice between consecutive chunks,
 which would otherwise be visible as discontinuities in the spectrogram.
+
+\subsection{Per-Chunk Overlap Phase-Jitter}
+\label{sec:jitter}
+
+The loudness-envelope repetition analysed in Section~\ref{sec:failures}
+turned out to live neither in the conditioning values nor in the guidance
+weights, but in the \emph{geometry of the chunk grid}.  With a constant
+overlap, every continuation chunk denoises a window of identical shape: same
+overlap length, same total window length, hence the same split between the
+regenerated-and-dropped lead-in and the kept new frames.  The kept region is
+therefore always the same phase of the model's window arc --- its canonical
+loudness gesture for the static prompt --- and the chunk map acquires a fixed
+point: each chunk re-renders the arc and hands the next chunk a context that
+elicits the same arc again.  The lock engages exactly when the
+reference-audio window first reaches full length (chunk~2--3), which is why
+listeners hear the audio ``start repeating after chunk~1''.  This reading
+also explains the intervention record of Section~\ref{sec:failures}: every
+failed intervention modulated conditioning \emph{values} inside a window
+whose \emph{shape} it left untouched, and a fixed point of the window shape
+is invisible to all of them.
+
+The fix is to make a fixed point impossible.  The per-chunk overlap cycles
+through $[\text{full},\,\text{half},\,\tfrac34]$ of the configured value ---
+$[8,4,6]$ latent frames for $\text{overlap}=8$; the realised sequence in the
+reported runs is $4,6,8,4,6,8,\dots$ --- so no two consecutive chunks share a
+window shape and no single arc phase can be kept twice in a row.  Three
+invariants keep the scheme transparent to the rest of the pipeline:
+
+\begin{itemize}[noitemsep]
+\item \textbf{Timeline invariance.}  Every chunk still keeps exactly
+  $\text{new\_lf}$ video and $\text{new\_af}$ audio frames; only the
+  regenerated-and-dropped lead-in varies in length.  The assembled output
+  timeline is unchanged relative to a constant-overlap run.
+\item \textbf{A/V proportionality.}  The audio overlap derives from the same
+  per-chunk video overlap ($34/50/67$\,af for $4/6/8$\,lf in the reported
+  runs), so video and audio overlaps scale together and no audio/video
+  offset accumulates.
+\item \textbf{Buffer slicing.}  The video and audio SLBs are stored at the
+  configured maximum overlap; each chunk slices the last $N$ frames matching
+  its jittered value, so buffer management is unchanged.
+\end{itemize}
+
+The jitter shortens the effective context on half-overlap chunks ($4$\,lf);
+no video-continuity loss is measured at the ten-chunk horizon, but longer
+horizons are untested (Section~\ref{sec:limitations}).  A structurally
+simpler alternative --- re-rendering the audio of the assembled Stage-1
+video in a single non-chunked pass --- was implemented and worked for short
+clips, but was rejected by design: CLSS exists for arbitrary-length
+streaming, and a whole-video audio window reintroduces exactly the
+$O(\text{total\_frames})$ context scaling the chunking removes (at this
+model's joint audio-video token count it is also VRAM-blocked outright,
+$\approx140$k tokens against a 42k budget).  The phase-jitter achieves the
+anti-repetition effect chunk-natively, at any length.
 
 \subsection{ComfyUI Node Integration}
 \label{sec:nodes}
@@ -652,7 +752,8 @@ Five custom nodes implement the full pipeline inside ComfyUI:
   doubles as a per-chunk \emph{object-identity} anchor (see
   Section~\ref{sec:limitations}).
 \item \textbf{CLSSStreamingSampler}: Stage 1 streaming sampler.  Accepts any
-  ComfyUI GUIDER/SAMPLER/SIGMAS/NOISE/LATENT combination.  Emits an
+  ComfyUI GUIDER/SAMPLER/SIGMAS/NOISE/LATENT combination.  Implements the
+  per-chunk overlap phase-jitter (Section~\ref{sec:jitter}) and emits an
   unconditional settings dump, per-chunk telemetry, end-of-run trend
   summaries with per-chunk localisation, per-frame origin/layout drift event
   tables, and a phase-lock repetition detector.
@@ -733,7 +834,8 @@ guidance stack but differ in the first-frame conditioning: a text-to-video
 (T2V) run with no image prior (Section~\ref{sec:exp_t2v}), and an
 image-to-video (I2V) run conditioned on a single guide frame
 ($1\times11\times20$ latent, Section~\ref{sec:exp_i2v}).  Both stream ten
-Stage-1 chunks ($\text{new\_lf}=16$, $\text{overlap}=8$) to 160 latent frames
+Stage-1 chunks ($\text{new\_lf}=16$, $\text{overlap}=8$, jittered
+$[4,6,8]$ per chunk, Section~\ref{sec:jitter}) to 160 latent frames
 ($\approx53$\,s at 24\,fps) and refine through the same four-window Stage~2
 pass.
 
@@ -764,7 +866,8 @@ Audio guidance & CFG 7.0, STG 1.0 \\
 Modality guidance & 1.0 (disabled; Section~\ref{sec:guider}) \\
 STG block / rescale & 28 / 0.70 (three passes/step) \\
 S1 noise temporal-corr mix & 0.30 (video only) \\
-Audio continuity & \texttt{ref\_audio} 67\,af, clean; no audio SLB \\
+Audio continuity & audio SLB at $\tau_c$ (auto$\to$on) + \texttt{ref\_audio} 67\,af, clean \\
+Overlap jitter & on; cycle $[8,4,6]$ lf (full/half/$\tfrac34$ of 8) \\
 Audio anchor & RMS-only, reference-exact $\pm5\%$ \\
 Stage 1 steps & 20 \\
 Stage 2 steps & 3 (distilled), audio frozen (mask 0) \\
@@ -785,47 +888,27 @@ Stage 2 (both) & 4 windows, $\text{fpc}=40$, $\text{overlap}=13$ (auto) \\
 
 No image is provided; Stage~1 chunk~1 begins from pure noise conditioned on the
 text prompt alone.  The clip is a single prompted scene streamed as ten chunks
-($\text{new\_lf}=16$, $\text{overlap}=8$), assembling to 160 latent frames
+($\text{new\_lf}=16$, $\text{overlap}=8$, jittered $[4,6,8]$), assembling to
+160 latent frames
 ($\approx53$\,s), under the identical seed and guidance stack as the I2V run
 (Table~\ref{tab:config}).  The prompted content is highly dynamic: intra-chunk
-similarity (a chunk's first vs.\ last new frame) sits near zero for most of
-the run (Table~\ref{tab:t2v_s1_metrics}), so this run exercises the correction
+similarity (a chunk's first vs.\ last new frame) stays low-to-moderate
+($0.02$--$0.71$) for the whole run
+(Table~\ref{tab:t2v_s1_metrics}), so this run exercises the correction
 stack under continuous motion rather than a stable anchored scene.
 
 \subsubsection{Guidance Activity}
 
-Every chunk shows \texttt{passes/step=3} with non-zero STG difference norms on
-both modalities (Table~\ref{tab:t2v_guidance}); no step fell back to plain
-shared CFG.  Chunk~1's audio STG norm is the outlier ($18.5$ versus
-$5.4$--$12.2$ thereafter): with no reference-audio window yet, the perturbed
-audio prediction diverges further from the conditional one.  The same chunk-1
-outlier appears in I2V on the \emph{video} norm instead
-(Table~\ref{tab:i2v_guidance}), where the guide image is the unmatched
+Every chunk reports \texttt{[CLSS AVGuiderV2] active: video\_cfg=4.0
+audio\_cfg=7.0 modality=1.0 stg=v1.0/a1.0@blk[28] rescale=0.70
+passes/step=3}, so no step fell back to plain shared CFG.  The guider's
+step-1 STG difference norms stay well away from zero on both modalities
+throughout --- video $83.8$--$112.7$, audio $20.3$ at chunk~1 rising to
+$46$--$53$ by the final chunks --- confirming both STG perturbations are live
+on every chunk (a zero norm would mean an inert self-attention skip).  The
+mirror-image chunk-1 outlier appears in I2V on the \emph{video} norm instead
+(Section~\ref{sec:exp_i2v}), where the guide image is the unmatched
 conditioning.
-
-\begin{table}[H]
-\centering
-\caption{T2V Stage 1 guidance difference norms (step 1 of each chunk).
-Modality guidance is disabled ($s_{\text{mod}}=1$), so only the STG terms are
-reported.}
-\label{tab:t2v_guidance}
-\begin{tabular}{ccc}
-\toprule
-Chunk & STG (vid) & STG (aud) \\
-\midrule
-1  &  84.1 & 18.5 \\
-2  &  88.6 & 12.2 \\
-3  &  98.4 &  6.2 \\
-4  & 140.3 &  9.6 \\
-5  & 112.9 &  8.0 \\
-6  & 158.5 &  5.4 \\
-7  & 221.8 & 10.6 \\
-8  & 127.3 &  9.0 \\
-9  & 167.8 &  8.8 \\
-10 & 131.0 &  9.9 \\
-\bottomrule
-\end{tabular}
-\end{table}
 
 \subsubsection{Stage 1 Results}
 
@@ -837,36 +920,39 @@ Chunk & STG (vid) & STG (aud) \\
 \toprule
 Chunk & Boundary sim$\uparrow$ & Intra sim & Identity sim & $\rho_{\rm loop}$ \\
 \midrule
-1/10  & N/A     & 0.1683 & 1.0000 (ref) & 0.570 \\
-2/10  & 0.7930  & 0.1893 & 0.7930 & 0.570 \\
-3/10  & 0.3826  & 0.3825 & 0.7318 & 0.570 \\
-4/10  & 0.5515  & 0.0973 & 0.7656 & 0.570 \\
-5/10  & 0.7340  & $-$0.0315 & 0.7340 & 0.570 \\
-6/10  & 0.8893  & 0.2079 & 0.6630 & 0.570 \\
-7/10  & 0.8283  & 0.2498 & 0.7099 & 0.570 \\
-8/10  & 0.9562  & 0.1992 & 0.9562 & 0.570 \\
-9/10  & 0.9715  & 0.1239 & 0.6967 & 0.570 \\
-10/10 & 0.9240  & 0.8520 & 0.9325 & 0.570 \\
+1/10  & N/A     & 0.0215 & 1.0000 (ref) & 0.570 \\
+2/10  & 0.7957  & 0.5740 & 0.7957 & 0.570 \\
+3/10  & 0.9185  & 0.2679 & 0.6716 & 0.570 \\
+4/10  & 0.7828  & 0.3469 & 0.7828 & 0.570 \\
+5/10  & 0.4685  & 0.2626 & 0.5317 & 0.570 \\
+6/10  & 0.5408  & 0.3013 & 0.5852 & 0.570 \\
+7/10  & 0.8607  & 0.7100 & 0.8607 & 0.570 \\
+8/10  & 0.7298  & 0.5166 & 0.7298 & 0.570 \\
+9/10  & 0.7801  & 0.2692 & 0.5815 & 0.570 \\
+10/10 & 0.7900  & 0.5356 & 0.6698 & 0.570 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 Without a guide image, video boundary continuity is far more variable than
-I2V's: the early seams range down to $0.383$ (chunk~3) while the last three
-seams sit at $0.92$--$0.97$, matching I2V levels.  The trajectory is the
-opposite of error accumulation --- the weakest hand-offs are \emph{early},
-while the content is still finding a stable configuration, and continuity
-\emph{improves} monotonically from chunk~5 onward as the SLB context becomes
-self-consistent.  Intra-chunk similarity near zero for most chunks (even
-negative at chunk~5) confirms sustained motion within every chunk; the jump to
-$0.852$ at chunk~10 marks the content settling in the final seconds.  Origin
-similarity to the scene reference is contained over the run ($0.142\to0.129$,
-range $0.091$), and identity similarity to the anchor bank holds a
-$0.66$--$0.96$ band with no monotonic decay.  The largest origin-similarity
-drops still concentrate at the chunk~1$\to$2 hand-off ($t=5.3$--$7.3$\,s, five
-of the six largest events, deepest $\Delta=-0.353$), while the largest
-coarse-layout drops are spread across chunks 1, 2, and 4 --- consistent with a
-run whose content moves throughout rather than drifting from a fixed opening.
+I2V's: the seams range from $0.469$ (chunk~5) to $0.919$ (chunk~3), with the
+weakest hand-offs sitting \emph{mid-run} (chunks 5--6, $0.469$/$0.541$) and
+the final three seams holding $0.73$--$0.79$.  The first-to-last trend is
+flat ($0.796\to0.790$), so this is boundary \emph{variance}, not accumulated
+drift --- the floor does not deepen with chunk index.  Chunk~5's dip
+coincides with the first half-overlap window ($4$\,lf context) following a
+full-overlap chunk: the jitter (Section~\ref{sec:jitter}) trades a shorter
+context on those chunks for its anti-repetition effect, and the cost shows up
+here as seam variance rather than as drift.  Intra-chunk similarity stays low
+throughout ($0.02$--$0.71$), confirming sustained motion within every chunk.
+Origin similarity to the scene reference is contained over the run
+($0.161\to0.158$, range $0.107$), and identity similarity to the anchor bank
+holds a $0.53$--$0.86$ band with no monotonic decay.  The largest
+origin-similarity drops still concentrate at the chunk~1$\to$2 hand-off
+(deepest $\Delta=-0.406$ at $t=5.3$\,s, with the next three largest also in
+chunks 2--5), while the largest coarse-layout drops spread across chunks 1,
+2, 3, 4, and 9 --- consistent with a run whose content moves throughout
+rather than drifting from a fixed opening.
 
 \begin{table}[H]
 \centering
@@ -879,52 +965,51 @@ floor cap).}
 Chunk & $\Delta\mu$ & $\Delta\sigma$ & $g_1$ & $g_2$/$g_3$ & $g_{\rm lo}$ & $g_{\rm hi}$ \\
 \midrule
 1  & $+0.0000$ & $+0.0000$ & 1.0000 & 1.0000/1.0000 & ref & ref \\
-2  & $+0.0019$ & $-0.0052$ & 0.9962 & 0.9829/0.9892 & 1.0146 & 1.0083 \\
-3  & $-0.0085$ & $-0.0431$ & 0.9882 & 0.9549/0.9782 & 1.0499 & 0.9226 \\
-4  & $-0.0028$ & $-0.0430$ & 0.9902 & 0.9706/0.9876 & 1.0205 & 0.9326 \\
-5  & $-0.0048$ & $-0.0405$ & 0.9910 & 0.9679/0.9865 & 1.0305 & 0.9283 \\
-6  & $+0.0044$ & $-0.0392$ & 0.9917 & 0.9678/0.9927 & 1.0437 & 0.9238 \\
-7  & $+0.0055$ & $-0.0811$ & 0.9843 & 0.9446/0.9699 & 1.0309 & 0.9000 \\
-8  & $+0.0047$ & $-0.0506$ & 0.9875 & 0.9683/0.9894 & 1.0640 & 0.9000 \\
-9  & $+0.0037$ & $-0.0494$ & 0.9911 & 0.9757/0.9933 & 1.0280 & 0.9000 \\
-10 & $+0.0034$ & $-0.0480$ & 0.9906 & 0.9738/0.9932 & 1.0929 & 0.9000 \\
+2  & $-0.0197$ & $-0.0213$ & 0.9962 & 0.9950/0.9929 & 0.9716 & 1.0341 \\
+3  & $-0.0100$ & $-0.0133$ & 0.9985 & 0.9889/0.9865 & 1.0027 & 1.0167 \\
+4  & $-0.0040$ & $-0.0379$ & 0.9941 & 0.9638/0.9765 & 1.0404 & 0.9361 \\
+5  & $-0.0118$ & $-0.0206$ & 0.9942 & 0.9855/0.9965 & 1.0129 & 0.9845 \\
+6  & $+0.0025$ & $-0.0128$ & 0.9949 & 0.9784/0.9955 & 1.0483 & 0.9749 \\
+7  & $+0.0047$ & $-0.0416$ & 0.9930 & 0.9636/0.9929 & 1.0591 & 0.9176 \\
+8  & $+0.0002$ & $-0.0337$ & 0.9927 & 0.9761/0.9954 & 1.0525 & 0.9401 \\
+9  & $+0.0047$ & $+0.0036$ & 0.9962 & 0.9922/0.9966 & 1.0758 & 1.0025 \\
+10 & $+0.0033$ & $-0.0485$ & 0.9915 & 0.9641/0.9921 & 1.0137 & 0.9181 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Every T2V continuation chunk receives a \emph{downward} std correction
-($\Delta\sigma<0$ throughout), in contrast to I2V's near-neutral pattern
-(Table~\ref{tab:i2v_s1_adain}): without an image-conditioned first chunk to
-compress toward, each text-only chunk's raw std runs hot relative to the EMA
-reference and AdaIN consistently pulls it back down.  Spectral shrinkage is
-correspondingly more active than in I2V (band-2 gains down to $0.9446$ vs.\
-I2V's $\geq0.985$).  The detail anchor works visibly hard in this run: raw
-high-band energy overshoots its scene-first reference on every chunk from
-chunk~3 (the model keeps adding spatial detail energy under sustained
-motion), and from chunk~7
-onward $g_{\rm hi}$ rides its $0.90$ floor cap while $g_{\rm lo}$ boosts the
-low band --- the net effect is a high-frequency \emph{share} held at
-$0.512\to0.520$ over the full run (trend range $+0.020$), where the same
-one-sided shrinkage without the anchor produced a monotonic hf-share collapse
-(Section~\ref{sec:detail}).
+Every T2V continuation chunk except chunk~9 receives a \emph{downward} std
+correction ($\Delta\sigma<0$; chunk~9 is $+0.0036$), in contrast to I2V's
+near-neutral pattern (Table~\ref{tab:i2v_s1_adain}): without an
+image-conditioned first chunk to compress toward, each text-only chunk's raw
+std runs hot relative to the EMA reference and AdaIN consistently pulls it
+back down.  Spectral shrinkage is correspondingly more active than in I2V
+(band-2 gains down to $0.9636$ vs.\ I2V's $\geq0.983$).  The detail anchor
+works visibly hard in this run: raw high-band energy overshoots its
+scene-first reference on most chunks from chunk~4 (the model keeps adding
+spatial detail energy under sustained motion), pulling $g_{\rm hi}$ down to
+$0.918$--$0.940$ while $g_{\rm lo}$ boosts the low band by up to $7.6\%$ ---
+the net effect is a high-frequency \emph{share} held exactly at its $0.4863$
+reference on every chunk, where the same one-sided shrinkage without the
+anchor produced a monotonic hf-share collapse (Section~\ref{sec:detail}).
 
-The anchor bank grows identically to I2V, from 1 to 5 entries at the same
-frame positions (bank\_frame\_ids $=[15,\,47,\,63,\,111,\,159]$).  With
-$\text{new\_lf}=16$, chunk $k$'s last frame lands at absolute index
-$16k-1$: $15, 31, 47, 63, \dots$ for $k=1,2,3,\dots$ --- so these five entries
-are chunks $\{1, 3, 4, 7, 10\}$, not chunks 2, 5, 6, 8, or 9.  Four of the five
-are the forced-insertion schedule exactly ($\text{chunk\_index} \bmod F_a = 0$
-with $F_a=3$: chunk~1 always seeds, then chunks 4, 7, 10).  Chunk~3 is the
-one \emph{organic}, threshold-triggered commit of the run: chunk~2's
-similarity to the seed anchor was already below threshold
-($\text{last\_frame\_max\_sim}=0.4171$, streak$=1$), and chunk~3 pushed the
-streak to $P=2$, committing independently of the forcing schedule.  Because
-the forced positions are fixed by chunk index alone, and T2V and I2V share
-chunk boundaries and seed, the two runs' forced entries coincide exactly
-despite entirely different video content; only an organic (content-triggered)
-entry could differ between them, and none did here (I2V's chunk~2 sits at
-$0.4183$ against the same threshold --- the organic commit lands at the same
-chunk in both runs).
+The anchor bank grows to six entries over the run (bank\_frame\_ids
+$=[15,\,47,\,63,\,95,\,111,\,159]$).  With $\text{new\_lf}=16$, chunk $k$'s
+last frame lands at absolute index $16k-1$: $15, 31, 47, 63, \dots$ for
+$k=1,2,3,\dots$ --- so these six entries are chunks $\{1, 3, 4, 6, 7, 10\}$.
+Four of the six are the forced-insertion schedule exactly
+($\text{chunk\_index} \bmod F_a = 0$ with $F_a=3$: chunk~1 always seeds, then
+chunks 4, 7, 10).  Chunks 3 and 6 are \emph{organic}, threshold-triggered
+commits: chunk~2's similarity to the seed anchor was already below threshold
+($\text{last\_frame\_max\_sim}=0.6679$, streak$=1$) and chunk~3 pushed the
+streak to $P=2$; the same pattern repeats at chunks 5--6
+($\text{last\_frame\_max\_sim}=0.6113$ at chunk~5).  Because the forced
+positions are fixed by chunk index alone, the two runs' forced entries
+coincide exactly despite entirely different video content; the organic
+commits are content-dependent, and here T2V commits twice organically while
+I2V commits once (chunk~3 in both; I2V's chunk-5 similarity, $0.8621$, stays
+above threshold, so its bank stops at five entries,
+Section~\ref{sec:exp_i2v}).
 
 \subsubsection{Stage 1 Audio}
 \label{sec:t2v_audio}
@@ -933,44 +1018,45 @@ chunk in both runs).
 \centering
 \caption{T2V Stage 1 per-chunk audio metrics.  RMS raw is the chunk's
 pre-anchor loudness; RMS out is after the reference-exact anchor
-(chunk-1 onset-excluded reference $0.853$).}
+(chunk-1 onset-excluded reference $0.8404$).  SLB hon.\ is the frozen
+audio-SLB verification ($1.0$ = the seeded tail survived denoising).}
 \label{tab:aud_t2v}
-\begin{tabular}{ccccccc}
+\begin{tabular}{cccccccc}
 \toprule
-Chunk & WC start & WC end & env\_corr & RMS raw & RMS out & Bnd sim \\
+Chunk & WC start & WC end & env\_corr & RMS raw & RMS out & Bnd sim & SLB hon. \\
 \midrule
-1  & 0.729 & 0.565 & ---   & 0.853 & (ref)  & N/A    \\
-2  & 0.457 & 0.252 & 0.247 & 0.542 & 0.822  & 0.3855 \\
-3  & 0.710 & 0.342 & 0.733 & 0.675 & 0.810  & 0.3445 \\
-4  & 0.795 & 0.505 & 0.911 & 0.772 & 0.810  & 0.4132 \\
-5  & 0.798 & 0.566 & 0.960 & 0.805 & 0.810  & 0.5519 \\
-6  & 0.877 & 0.689 & 0.790 & 0.810 & 0.810  & 0.5969 \\
-7  & 0.864 & 0.718 & 0.829 & 0.847 & 0.814  & 0.8174 \\
-8  & 0.842 & 0.671 & 0.873 & 0.884 & 0.821  & 0.5013 \\
-9  & 0.851 & 0.748 & 0.871 & 0.911 & 0.830  & 0.5898 \\
-10 & 0.830 & 0.676 & 0.758 & 0.909 & 0.838  & 0.5282 \\
+1  & 0.745 & 0.622 & ---      & 0.842 & (ref)  & N/A    & ---   \\
+2  & 0.867 & 0.770 & $-$0.510 & 0.835 & 0.840  & 0.8488 & 1.000 \\
+3  & 0.695 & 0.826 & $-$0.003 & 0.743 & 0.830  & 0.8693 & 1.000 \\
+4  & 0.417 & 0.381 & $-$0.035 & 0.786 & 0.826  & 0.8993 & 1.000 \\
+5  & 0.653 & 0.757 & $-$0.135 & 0.824 & 0.826  & 0.7569 & 1.000 \\
+6  & 0.637 & 0.715 & $-$0.338 & 0.734 & 0.816  & 0.7243 & 1.000 \\
+7  & 0.780 & 0.765 & $-$0.285 & 0.818 & 0.816  & 0.9000 & 1.000 \\
+8  & 0.632 & 0.559 & $-$0.194 & 0.761 & 0.811  & 0.8514 & 1.000 \\
+9  & 0.648 & 0.705 & $-$0.046 & 0.776 & 0.807  & 0.3915 & 1.000 \\
+10 & 0.730 & 0.741 & $-$0.258 & 0.793 & 0.806  & 0.9162 & 1.000 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The reference-exact RMS anchor earns its name in this run.  Raw per-chunk
-loudness collapses at chunk~2 (0.542 against a chunk-1 reference of 0.853,
-corrected with gain 1.52) and then creeps monotonically to 0.911 by chunk~9
-($+68\%$ from its own floor); the anchored output holds $0.81$--$0.84$
-throughout, within $\pm5\%$ of the reference.  Without the anchor this run
-would have both a loudness dropout at the first hand-off and a $+72\%$
-end-to-end drift.
-
-The loudness-envelope correlation climbs from $0.247$ at chunk~2 into a
-sustained $0.76$--$0.96$ band from chunk~4 onward --- the same loudness
-gesture recurring each chunk, the envelope-repetition failure mode analysed in
-Section~\ref{sec:failures}.  The energy-peak detector reads looser than the
-correlation suggests (mode covers $3/10$ chunks within $\pm1$; peaks at frames
-26--34 early, 113 late), i.e.\ the repeated gesture drifts in phase across the
-run rather than locking to one frame.  Within-chunk coherence is lower than
-I2V's late-run values and boundary similarity is moderate ($0.34$--$0.82$),
-consistent with the dynamic content: each chunk's audio tracks its own visual
-motion first and its predecessor second.
+The reference-exact RMS anchor holds output loudness at $0.806$--$0.840$
+against raw per-chunk excursions of $0.734$--$0.842$ (largest correction gain
+$1.12$, chunk~3) --- the raw collapse-and-creep pattern of the pre-anchor
+runs is gone, and the anchor now trims single-digit percentages rather than
+rescuing a $+72\%$ drift.  The headline change over every earlier
+configuration is the envelope row: env\_corr never rises above $-0.003$ at
+any of the nine hand-offs (trend $-0.510\to-0.258$, range $0.507$), where the
+matched constant-overlap runs sustained $0.76$--$0.96$ from chunk~4 onward.
+The energy-peak detector reads fully scattered (peaks at frames
+$[38,\,118,\,127,\,43,\,101,\,64,\,26,\,86,\,49,\,12]$, mode covering $1/10$
+within $\pm1$): no shared phase, no recurring gesture --- the fixed-point
+mechanism of Section~\ref{sec:jitter} is broken by construction, and the
+audible metronome with it.  Boundary similarity with the restored audio SLB
+holds $0.72$--$0.92$ on eight of nine seams, rising first-to-last
+($0.849\to0.916$); the single weak seam ($0.392$, chunk~9) is flagged by the
+trend summary and is the honest residual of this run.  The SLB freeze is
+verified numerically at every chunk (\texttt{SLB honored}$=1.0000$
+throughout).
 
 \subsubsection{Stage 2 Results}
 
@@ -985,27 +1071,30 @@ window seam (Stage~2 never re-rolls audio).}
 \toprule
 Window & Bnd sim$\uparrow$ & Intra sim & Fid first & Fid last & Aud\_bnd & $g_{\rm lo}$/$g_{\rm hi}$ \\
 \midrule
-1/4 & N/A    & $-$0.1514 & 0.8906 & 0.9466 & N/A    & 1.054/0.900 \\
-2/4 & 0.7833 & 0.7804 & 0.9514 & 0.9460 & 0.6759 & 1.032/0.900 \\
-3/4 & 0.8214 & 0.8260 & 0.9264 & 0.9218 & 0.8269 & 1.006/0.900 \\
-4/4 & 0.7782 & 0.7803 & 0.8343 & 0.8448 & 0.8956 & 1.011/0.900 \\
+1/4 & N/A    & $-$0.3224 & 0.9190 & 0.9669 & N/A    & 1.036/0.900 \\
+2/4 & 0.9509 & 0.5568 & 0.9667 & 0.9277 & 0.7783 & 1.048/0.900 \\
+3/4 & 0.5629 & 0.2996 & 0.9280 & 0.9343 & 0.9001 & 1.036/0.900 \\
+4/4 & 0.7740 & 0.5562 & 0.8992 & 0.9230 & 0.8311 & 1.021/0.900 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Window~1's intra similarity is \emph{negative} ($-0.151$), unlike I2V's
-positive $0.600$ for the same window: the dynamic T2V opening (Table~\ref{tab:t2v_s1_metrics}, chunk-1 intra $0.168$) carries into Stage~2 as a
+Window~1's intra similarity is \emph{negative} ($-0.322$), unlike I2V's
+positive $0.728$ for the same window: the dynamic T2V opening
+(Table~\ref{tab:t2v_s1_metrics}, chunk-1 intra $0.022$) carries into Stage~2 as a
 first window whose start and end frames barely correlate, whereas I2V's guide
 image keeps its first window internally coherent.  The per-window detail
 anchor engages identically at every window: the 3-step distilled refinement
 adds spatial high-frequency energy over its Stage-1 seed at every window
-(pre-anchor hf share $0.48$--$0.56$ against Stage-1 references of
-$0.35$--$0.42$), and $g_{\rm hi}$ rides its $0.90$ floor cap in all four
+(pre-anchor hf share $0.46$--$0.50$ against Stage-1 references of
+$0.32$--$0.35$), and $g_{\rm hi}$ rides its $0.90$ floor cap in all four
 windows, pulling the excess back toward the Stage-1 reference.  Because the
 reference is recomputed per window, the correction cannot compound: fidelity
-to Stage-1 structure holds $0.92$--$0.95$ through window~3, easing to $0.84$
-only in the final window.  The audio row measures the \emph{frozen} Stage-1
-audio's own continuity at the three window seams ($0.676$/$0.827$/$0.896$) ---
+to Stage-1 structure holds $0.90$--$0.97$ throughout (fid\_first
+$0.919\to0.899$, fid\_last $0.967\to0.923$ first-to-last), with no
+end-of-run collapse.  The audio row measures the \emph{frozen} Stage-1
+audio's own continuity at the three window seams ($0.778$/$0.900$/$0.831$,
+rising with the Stage-1 audio's own improved seams) ---
 Stage~2 introduces no audio seams of its own
 (\texttt{frozen\_verify\_sim}$=1.0$ at every window).
 
@@ -1017,43 +1106,20 @@ Stage~2 introduces no audio seams of its own
 A single guide image is encoded to a latent of shape $[1,128,1,11,20]$ and
 provided as first-frame conditioning to Stage~1 chunk~1 (guide adherence
 $1.0000$ measured at the placed frame).  The clip is a single prompted scene
-streamed as ten chunks ($\text{new\_lf}=16$, $\text{overlap}=8$), assembling
-to 160 latent frames ($\approx53$\,s).  All CLSS hyperparameters and the
-guidance stack are those of Table~\ref{tab:config}.
+streamed as ten chunks ($\text{new\_lf}=16$, $\text{overlap}=8$, jittered
+$[4,6,8]$), assembling to 160 latent frames ($\approx53$\,s).  All CLSS
+hyperparameters and the guidance stack are those of Table~\ref{tab:config}.
 
 \subsubsection{Guidance Activity}
 
-The guider emits \texttt{passes/step=3} and its STG difference norms once per
-chunk (Table~\ref{tab:i2v_guidance}); both modalities stay well away from zero
-on every chunk, so no step fell back to plain shared CFG.  Chunk~1 is the
-outlier on the \emph{video} STG norm ($200.7$ versus $76.9$--$172.5$
-thereafter): the guide image is a hard constraint the perturbed prediction
-cannot honour, so the perturbation response is largest exactly where the
-conditioning is strongest.
-
-\begin{table}[H]
-\centering
-\caption{I2V Stage 1 guidance difference norms (step 1 of each chunk).
-STG measures the self-attention-skip perturbation; non-zero $\Rightarrow$
-guidance active.  Modality guidance is disabled ($s_{\text{mod}}=1$).}
-\label{tab:i2v_guidance}
-\begin{tabular}{ccc}
-\toprule
-Chunk & STG (vid) & STG (aud) \\
-\midrule
-1  & 200.7 & 10.5 \\
-2  &  85.3 &  7.3 \\
-3  & 132.3 &  5.7 \\
-4  &  93.6 &  6.5 \\
-5  &  96.6 &  4.1 \\
-6  &  88.7 &  5.7 \\
-7  &  76.9 &  7.2 \\
-8  &  91.1 &  5.3 \\
-9  & 100.6 &  7.4 \\
-10 & 172.5 &  8.7 \\
-\bottomrule
-\end{tabular}
-\end{table}
+Every chunk reports \texttt{[CLSS AVGuiderV2] active: video\_cfg=4.0
+audio\_cfg=7.0 modality=1.0 stg=v1.0/a1.0@blk[28] rescale=0.70
+passes/step=3}, so no step fell back to plain shared CFG.  The step-1 STG
+difference norms stay well away from zero on both modalities on every chunk
+--- video $81.6$--$133.5$, audio $4.9$--$25.0$ --- with chunk~1 the clear
+video-side outlier ($203.7$): the guide image is a hard constraint the
+self-attention-skipped prediction cannot honour, so the perturbation response
+is largest exactly where the conditioning is strongest.
 
 \subsubsection{Stage 1 Results}
 
@@ -1067,35 +1133,36 @@ frame; identity\_sim compares the chunk against its nearest anchor-bank entry.}
 \toprule
 Chunk & Boundary sim$\uparrow$ & Intra sim$\uparrow$ & Identity sim & $\rho_{\rm loop}$ \\
 \midrule
-1/10  & N/A     & 0.5006 & 1.0000 (ref) & 0.570 \\
-2/10  & 0.9245  & 0.5422 & 0.9245 & 0.570 \\
-3/10  & 0.9389  & 0.8963 & 0.8963 & 0.570 \\
-4/10  & 0.9366  & 0.9088 & 0.9366 & 0.570 \\
-5/10  & 0.9188  & 0.9307 & 0.9188 & 0.570 \\
-6/10  & 0.9415  & 0.9290 & 0.9101 & 0.570 \\
-7/10  & 0.9498  & 0.9431 & 0.9431 & 0.570 \\
-8/10  & 0.9654  & 0.9378 & 0.9654 & 0.570 \\
-9/10  & 0.9622  & 0.9377 & 0.9670 & 0.570 \\
-10/10 & 0.9741  & 0.7601 & 0.9147 & 0.570 \\
+1/10  & N/A     & 0.4934 & 1.0000 (ref) & 0.570 \\
+2/10  & 0.7900  & 0.6997 & 0.7900 & 0.570 \\
+3/10  & 0.8650  & 0.6752 & 0.7542 & 0.570 \\
+4/10  & 0.9586  & 0.8974 & 0.9586 & 0.570 \\
+5/10  & 0.9373  & 0.8498 & 0.9373 & 0.570 \\
+6/10  & 0.9404  & 0.8175 & 0.8776 & 0.570 \\
+7/10  & 0.9713  & 0.9053 & 0.9053 & 0.570 \\
+8/10  & 0.9505  & 0.8755 & 0.9505 & 0.570 \\
+9/10  & 0.9614  & 0.8622 & 0.8513 & 0.570 \\
+10/10 & 0.9814  & 0.7029 & 0.9204 & 0.570 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Video boundary continuity holds between 0.919 and 0.974 across all nine chunk
-transitions and \emph{rises} over the run --- the last three seams are the
-strongest three.  The floor sits early (chunk~5, $0.9188$; chunk~2, the first
-SLB-conditioned hand-off, is barely above it at $0.9245$), so the corrected
-loop does not compound error over this horizon.  The largest structural events
-of the whole run still cluster at the chunk~1$\to$2 seam
-($t\approx5.3$--$9.3$\,s): five of the six largest per-frame origin-similarity
-drops land there (deepest $\Delta=-0.219$), the transition out of the
+Video boundary continuity holds between $0.790$ and $0.981$ across all nine
+chunk transitions and \emph{rises} over the run --- the strongest seam is the
+last one.  The floor sits at chunk~2 ($0.7900$), the first SLB-conditioned
+hand-off, after which no seam falls below $0.86$: the corrected loop does not
+compound error over this horizon, and the jittered context length
+($4$--$8$\,lf) does not measurably cost video continuity here.  The largest
+structural events of the whole run still cluster at the chunk~1$\to$2 seam
+($t\approx5.3$--$6.3$\,s): the four largest per-frame origin-similarity drops
+land there (deepest $\Delta=-0.190$), the transition out of the
 guide-image-locked opening.  Global origin similarity to the scene reference
-is contained over the full run ($0.332\to0.262$, range $0.079$), in contrast
+is contained over the full run ($0.327\to0.290$, range $0.084$), in contrast
 to the monotonic walk-away drift seen at wider overlaps in earlier open-loop
-testing.  Identity similarity to the anchor bank is essentially flat
-($0.925\to0.915$, floor $0.896$ at chunk~3), and intra-chunk similarity
-\emph{grows} from $0.54$ to a $0.93$--$0.94$ plateau as the scene settles ---
-a stable anchored scene, the complementary regime to T2V's sustained motion.
+testing.  Identity similarity to the anchor bank dips early (floor $0.754$ at
+chunk~3) and recovers to $0.92$, and intra-chunk similarity rises from
+$0.49$ to a $0.82$--$0.91$ plateau as the scene settles --- a stable anchored
+scene, the complementary regime to T2V's sustained motion.
 
 \begin{table}[H]
 \centering
@@ -1107,33 +1174,36 @@ a stable anchored scene, the complementary regime to T2V's sustained motion.
 Chunk & $\Delta\mu$ & $\Delta\sigma$ & $g_1$ & $g_2$/$g_3$ & $g_{\rm lo}$ & $g_{\rm hi}$ \\
 \midrule
 1  & $+0.0000$ & $+0.0000$ & 1.0000 & 1.0000/1.0000 & ref & ref \\
-2  & $-0.0027$ & $-0.0115$ & 0.9952 & 0.9863/0.9964 & 1.0130 & 0.9798 \\
-3  & $+0.0005$ & $-0.0062$ & 0.9977 & 0.9917/0.9976 & 1.0131 & 0.9857 \\
-4  & $-0.0017$ & $-0.0118$ & 0.9965 & 0.9906/0.9976 & 1.0091 & 0.9783 \\
-5  & $+0.0005$ & $-0.0103$ & 0.9963 & 0.9912/0.9974 & 1.0064 & 0.9824 \\
-6  & $+0.0006$ & $-0.0136$ & 0.9965 & 0.9902/0.9974 & 0.9971 & 0.9813 \\
-7  & $+0.0016$ & $-0.0145$ & 0.9964 & 0.9931/0.9980 & 0.9865 & 0.9868 \\
-8  & $+0.0027$ & $-0.0140$ & 0.9963 & 0.9926/0.9968 & 0.9923 & 0.9807 \\
-9  & $+0.0005$ & $-0.0080$ & 0.9971 & 0.9934/0.9968 & 1.0051 & 0.9807 \\
-10 & $-0.0020$ & $-0.0139$ & 0.9953 & 0.9854/0.9916 & 1.0223 & 0.9591 \\
+2  & $-0.0128$ & $-0.0166$ & 0.9955 & 0.9828/0.9924 & 1.0013 & 0.9782 \\
+3  & $-0.0029$ & $-0.0072$ & 0.9969 & 0.9888/0.9926 & 1.0184 & 0.9815 \\
+4  & $-0.0052$ & $-0.0121$ & 0.9961 & 0.9874/0.9982 & 1.0120 & 0.9843 \\
+5  & $-0.0031$ & $-0.0109$ & 0.9949 & 0.9912/0.9978 & 1.0134 & 0.9894 \\
+6  & $-0.0019$ & $-0.0086$ & 0.9949 & 0.9907/0.9957 & 1.0152 & 0.9947 \\
+7  & $-0.0032$ & $-0.0094$ & 0.9944 & 0.9920/0.9950 & 1.0209 & 0.9875 \\
+8  & $-0.0025$ & $-0.0211$ & 0.9955 & 0.9860/0.9941 & 1.0027 & 0.9732 \\
+9  & $+0.0014$ & $-0.0158$ & 0.9964 & 0.9855/0.9940 & 1.0175 & 0.9686 \\
+10 & $+0.0002$ & $+0.0054$ & 0.9989 & 0.9938/0.9925 & 1.0413 & 0.9918 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 On this stable anchored scene the correction stack idles, as designed: AdaIN
-deltas stay within $|\Delta\mu|\le0.003$, $|\Delta\sigma|\le0.015$, every band
-gain is $\ge0.985$, and the detail-anchor gains never stray more than $2.2\%$
-(low band) / $4.1\%$ (high band) from unity --- an every-chunk trim, not a
+deltas stay within $|\Delta\mu|\le0.013$, $|\Delta\sigma|\le0.021$, every band
+gain is $\ge0.983$, and the detail-anchor gains never stray more than $4.1\%$
+(low band) / $3.1\%$ (high band) from unity --- an every-chunk trim, not a
 fight.  The result is the flattest telemetry of either run: high-frequency
-share exactly flat ($0.510\to0.510$, trend range $0.000$), std stable
-($0.959\to0.962$).  Contrast T2V (Table~\ref{tab:t2v_s1_adain}), where the
-same stack works at its caps every chunk; the corrections scale with measured
-excess rather than applying a fixed schedule.
+share exactly flat at its $0.5090$ reference on every chunk, std stable
+($0.967\to0.969$).  Contrast T2V (Table~\ref{tab:t2v_s1_adain}), where the
+same stack works measurably harder every chunk; the corrections scale with
+measured excess rather than applying a fixed schedule.
 
 The anchor bank grows from 1 to 5 entries over the run at chunks
-$\{1,3,4,7,10\}$ (bank\_frame\_ids $=[15,\,47,\,63,\,111,\,159]$) --- the same
-forced-insertion-plus-one-organic-commit pattern derived in detail for T2V
-(Section~\ref{sec:exp_t2v}), since both runs share chunk boundaries and seed.
+$\{1,3,4,7,10\}$ (bank\_frame\_ids $=[15,\,47,\,63,\,111,\,159]$) --- the
+forced-insertion schedule plus the single organic commit at chunk~3 derived
+in detail for T2V (Section~\ref{sec:exp_t2v}).  I2V's second organic
+opportunity does not trigger: chunk~5's similarity to the bank ($0.8621$)
+stays above the $\rho_a=0.78$ threshold, so its bank ends one entry smaller
+than T2V's.
 
 The ComfyUI sampler uses the bank for identity telemetry only: the
 retrieval-injection conditioning path of Section~\ref{sec:anchor} is present in
@@ -1156,43 +1226,42 @@ conditioning mechanism is currently known; the bank remains diagnostic-only.
 \caption{I2V Stage 1 per-chunk audio metrics.  Within-chunk similarity is
 reported at the start and end of each chunk; env\_corr is the loudness-envelope
 correlation with the previous chunk ($>0.7$ flags a repeating gesture); RMS
-raw/out are pre-/post-anchor (chunk-1 onset-excluded reference $0.532$).}
+raw/out are pre-/post-anchor (chunk-1 onset-excluded reference $0.5589$);
+SLB hon.\ is the frozen audio-SLB verification.}
 \label{tab:aud_i2v}
-\begin{tabular}{ccccccc}
+\begin{tabular}{cccccccc}
 \toprule
-Chunk & WC start & WC end & env\_corr & RMS raw & RMS out & Bnd sim \\
+Chunk & WC start & WC end & env\_corr & RMS raw & RMS out & Bnd sim & SLB hon. \\
 \midrule
-1  & 0.361 & 0.391 & ---   & 0.529 & (ref) & N/A    \\
-2  & 0.384 & 0.652 & 0.402 & 0.498 & 0.528 & 0.0724 \\
-3  & 0.663 & 0.699 & 0.768 & 0.556 & 0.531 & 0.2981 \\
-4  & 0.634 & 0.754 & 0.844 & 0.559 & 0.534 & 0.4690 \\
-5  & 0.747 & 0.840 & 0.769 & 0.571 & 0.538 & 0.3455 \\
-6  & 0.580 & 0.775 & 0.587 & 0.525 & 0.536 & 0.5346 \\
-7  & 0.741 & 0.795 & 0.614 & 0.551 & 0.538 & 0.4699 \\
-8  & 0.638 & 0.737 & 0.599 & 0.537 & 0.538 & 0.4339 \\
-9  & 0.478 & 0.679 & 0.442 & 0.542 & 0.538 & 0.2670 \\
-10 & 0.457 & 0.656 & 0.463 & 0.546 & 0.539 & 0.4395 \\
+1  & 0.347 & 0.523 & ---      & 0.556 & (ref)  & N/A    & ---   \\
+2  & 0.482 & 0.842 & 0.060    & 0.511 & 0.554  & 0.6190 & 1.000 \\
+3  & 0.740 & 0.811 & 0.164    & 0.570 & 0.556  & 0.8879 & 1.000 \\
+4  & 0.919 & 0.886 & 0.190    & 0.581 & 0.558  & 0.9474 & 1.000 \\
+5  & 0.791 & 0.748 & $-$0.081 & 0.663 & 0.569  & 0.8736 & 1.000 \\
+6  & 0.838 & 0.787 & 0.167    & 0.617 & 0.574  & 0.8882 & 1.000 \\
+7  & 0.828 & 0.720 & $-$0.076 & 0.596 & 0.576  & 0.9554 & 1.000 \\
+8  & 0.790 & 0.875 & $-$0.001 & 0.657 & 0.584  & 0.9130 & 1.000 \\
+9  & 0.917 & 0.920 & $-$0.057 & 0.615 & 0.587  & 0.9104 & 1.000 \\
+10 & 0.732 & 0.710 & $-$0.020 & 0.595 & 0.587  & 0.9183 & 1.000 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Loudness is intrinsically stable in this run: raw per-chunk RMS never leaves
-$0.50$--$0.57$ and the anchor's corrections never exceed $6.1\%$ --- the
-anchor trims rather than rescues (contrast T2V,
-Section~\ref{sec:t2v_audio}).  The loudness-envelope correlation traces an
-arc: it climbs from $0.402$ at chunk~2 to a peak of $0.844$ at chunk~4 ---
-crossing the $0.7$ repetition flag for chunks 3--5 --- and then \emph{decays}
-to $0.44$--$0.46$ over the final two chunks; the energy-peak positions scatter
-correspondingly (frames 26, 3, 30, 31, 92, 35, 92, 126, 92, 10; mode covers
-only $3/10$ within $\pm1$).  Under the clean full-length reference window the
-correlation does not lock permanently, but the repeating-gesture signature
-remains the flagged drift of the trend summary in both runs, and per-chunk
-repetition remains audible in listening across every configuration tested ---
-its structural character and the interventions that failed against it are
-analysed in Section~\ref{sec:failures}.  Audio boundary similarity is low in
-absolute terms ($0.07$--$0.53$): with the audio SLB off, the seam frame is
-not pinned, and continuity across the cut rests on the reference-audio
-conditioning alone.
+Loudness is intrinsically stable in this run and the anchor enforces it:
+raw per-chunk RMS ranges $0.511$--$0.663$ ($-9\%$/$+19\%$ around the $0.5589$
+reference) and the anchored output holds $0.554$--$0.587$, with the largest
+corrections \emph{downward} ($14\%$ at chunk~5, where the raw chunk runs
+loud).  The loudness-envelope correlation never crosses the $0.7$ repetition
+flag --- it never exceeds $0.190$ at any hand-off (trend $0.060\to-0.020$,
+range $0.271$), where the matched constant-overlap run arced to $0.844$ ---
+and the energy-peak positions scatter across the whole window (frames
+$[38,\,74,\,42,\,10,\,107,\,128,\,99,\,69,\,64,\,28]$; mode covers $1/10$
+within $\pm1$).  The audio-SLB restoration shows directly in the boundary
+column: boundary similarity rises from $0.619$ at the first hand-off to a
+$0.87$--$0.96$ band from chunk~3 onward (first-to-last $0.619\to0.918$),
+against the $0.07$--$0.53$ of the SLB-off configuration, where every chunk
+re-invented its audio.  The SLB freeze is verified at every chunk
+(\texttt{SLB honored}$=1.0000$).
 
 \subsubsection{Stage 2 Results}
 
@@ -1211,28 +1280,34 @@ are the per-window detail-anchor gains.}
 \toprule
 Window & Bnd sim$\uparrow$ & Intra sim & Fid first & Fid last & Aud\_bnd & $g_{\rm lo}$/$g_{\rm hi}$ \\
 \midrule
-1/4 & N/A    & 0.5998 & 0.9870 & 0.9689 & N/A    & 1.039/0.900 \\
-2/4 & 0.9281 & 0.9569 & 0.9733 & 0.9419 & 0.5499 & 1.038/0.900 \\
-3/4 & 0.7768 & 0.7820 & 0.9086 & 0.9296 & 0.8365 & 1.022/0.900 \\
-4/4 & 0.8802 & 0.8067 & 0.9200 & 0.9402 & 0.7136 & 1.028/0.900 \\
+1/4 & N/A    & 0.7276 & 0.9851 & 0.9589 & N/A    & 1.039/0.900 \\
+2/4 & 0.8285 & 0.7634 & 0.9546 & 0.9201 & 0.8588 & 1.044/0.900 \\
+3/4 & 0.7604 & 0.6768 & 0.9060 & 0.9699 & 0.7521 & 1.058/0.900 \\
+4/4 & 0.8961 & 0.6833 & 0.9425 & 0.9105 & 0.0513 & 1.049/0.900 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-End-of-window fidelity to the Stage-1 latent holds $0.93$--$0.97$ across all
-four windows and \emph{rises} over the final two ($0.9296\to0.9402$) --- no
-end-of-run erosion.  As in T2V, the distilled refinement adds spatial
-high-frequency energy at every window (pre-anchor hf share $0.45$--$0.46$
-against Stage-1 references of $0.35$--$0.38$) and the per-window detail anchor
+End-of-window fidelity to the Stage-1 latent holds $0.91$--$0.97$ across all
+four windows (fid\_first $0.985\to0.942$, fid\_last $0.959\to0.910$
+first-to-last) --- no end-of-run erosion.  As in T2V, the distilled
+refinement adds spatial
+high-frequency energy at every window (pre-anchor hf share $0.45$--$0.48$
+against Stage-1 references of $0.34$--$0.36$) and the per-window detail anchor
 pulls it back with $g_{\rm hi}$ at the $0.90$ floor cap throughout; because
 each window is referenced to its own Stage-1 slice, the trim cannot
 accumulate into progressive softening.  Video seam continuity ranges
-$0.78$--$0.93$, weakest at the window-2$\to$3 seam ($t\approx26.7$\,s).  The
+$0.76$--$0.90$, weakest at the window-2$\to$3 seam ($t\approx26.7$\,s).  The
 audio timeline is bit-identical to Stage~1
 (\texttt{frozen\_verify\_sim}$=1.0$ per window); the Aud\_bnd column
-re-measures the Stage-1 audio's own chunk continuity where the video windows
-happen to cut ($0.55$--$0.84$).  The assembled refined latents are
-$[1,128,160,22,40]$ (video, std $0.912$) and $[1,8,1333,16]$ (audio, frozen),
+re-measures the Stage-1 audio's own continuity where the video windows
+happen to cut.  Two of the three readings are strong ($0.859$/$0.752$); the
+last window's $0.051$ is the Stage-1 audio's own weak transition at
+$t=40.0$\,s surfacing verbatim in the frozen passthrough --- Stage~2 never
+re-rolls audio, so it can neither cause nor repair it (the Stage-1 trend
+summary flags the corresponding span, Table~\ref{tab:aud_i2v}).  The
+assembled refined latents are
+$[1,128,160,22,40]$ (video, std $0.916$) and $[1,8,1333,16]$ (audio, frozen),
 with no NaN/Inf.
 
 %--------------------------------------------------------------------------
@@ -1241,33 +1316,40 @@ with no NaN/Inf.
 
 \begin{table}[H]
 \centering
-\caption{Wall-clock timing for the I2V run on a 16\,GB GPU (RTX-class, CPU
-block-streaming); the T2V run's per-chunk/per-window timings match to within a
-few percent throughout (see text) and are omitted for brevity.  Stage~1 runs
-three transformer passes per step (split CFG, STG); Stage~2 runs a single
-video refinement pass per window (audio frozen).}
+\caption{Wall-clock timing on a 16\,GB GPU (RTX-class, CPU block-streaming);
+s/it ranges span the matched T2V and I2V runs, which agree to within a few
+percent at every position.  Stage~1 runs three transformer passes per step
+(split CFG, STG); Stage~2 runs a single video refinement pass per window
+(audio frozen).  The Stage-1 window length varies per chunk because of the
+overlap jitter (Section~\ref{sec:jitter}), and the per-chunk cost tracks it.}
 \label{tab:timing}
 \begin{tabular}{lccccc}
 \toprule
-Stage / pass & Chunk & Steps & s/it & Time & Tokens \\
+Stage / pass & Chunks & Window (lf) & s/it & Time & Tokens \\
 \midrule
-S1          & 1/10    & 20 & 18.3      & $\approx6.1$\,min & --- \\
-S1          & 2--10/10 & 20 & 24.2--24.4 & $\approx8.1$\,min each & --- \\
+S1 (20 steps) & 1        & 16 & 19.0        & $\approx6.3$\,min       & --- \\
+S1 (20 steps) & 2, 5, 8  & 20 & 21.5--23.1  & $\approx7.1$--$7.7$\,min each & --- \\
+S1 (20 steps) & 3, 6, 9  & 22 & 23.6--23.9  & $\approx7.9$\,min each  & --- \\
+S1 (20 steps) & 4, 7, 10 & 24 & 25.0--26.1  & $\approx8.3$--$8.7$\,min each & --- \\
 \midrule
-S2 video    & 1/4     & 3  & 68.5      & $\approx3.4$\,min & 35{,}200 \\
-S2 video    & 2--4/4  & 3  & 102--103  & $\approx5.1$\,min each & 46{,}640 \\
+S2 video (3 steps) & 1/4   & 40 & 69--70     & $\approx3.5$\,min       & 35{,}200 \\
+S2 video (3 steps) & 2--4/4 & 53 & 104--106   & $\approx5.2$\,min each  & 46{,}640 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Total generation time: Stage~1 $\approx79$\,min $+$ Stage~2 $\approx19$\,min
-$\approx\mathbf{98}\,\textbf{min}$ for a $\approx53$-second clip.  The
+Total generation time: Stage~1 $\approx77$--$78$\,min $+$ Stage~2
+$\approx19$\,min, i.e.\ $\approx\mathbf{96}$\,\textbf{min} (T2V) to
+$\approx\mathbf{97}$\,\textbf{min} (I2V) for a $\approx53$-second clip.  The
 dominant cost driver is the three-pass guidance in Stage~1 --- each denoising
 step runs three transformer passes (conditional, unconditional,
-STG-perturbed) rather than one.  Chunk~1 is cheaper than the continuations
-($18.3$ vs.\ $24.2$--$24.4$\,s/it) because it carries no 8-frame overlap
-context ($16$ vs.\ $24$ latent frames in the window).  In Stage~2 the
-per-window cost rises $\approx50\%$ after window~1 ($68.5\to102$--$103$\,s/it)
+STG-perturbed) rather than one.  The per-chunk cost now varies with the
+jittered window size (Section~\ref{sec:jitter}): chunk~1 is cheapest
+($19.0$\,s/it, $16$ latent frames, no overlap context), and the continuation
+chunks step up cleanly with window length --- $21.5$--$23.1$\,s/it at
+$20$\,lf, $23.6$--$23.9$ at $22$\,lf, $25.0$--$26.1$ at $24$\,lf --- a
+per-chunk timing signature of the jitter itself.  In Stage~2 the
+per-window cost rises $\approx50\%$ after window~1 ($69$--$70\to104$--$106$\,s/it)
 against a token-count rise of $\approx32\%$: as the run proceeds an
 increasing share of the model is pushed to CPU (offloaded weights grow from
 $\approx5.7$\,GB to $\approx7.8$\,GB across the pass), so the slowdown is
@@ -1276,8 +1358,8 @@ rather than a compute-scaling one.
 
 The T2V run costs the same as I2V to within rounding: per-chunk and
 per-window s/it match to a few percent at every position (e.g.\ Stage-1
-chunk~1: $18.2$ vs.\ $18.3$\,s/it; Stage-2 window~3: $105.1$ vs.\
-$102.8$\,s/it), confirming that the guide image changes neither the token
+chunk~1: $18.97$\,s/it in both runs; Stage-2 window~2: $103.8$ vs.\
+$106.0$\,s/it), confirming that the guide image changes neither the token
 count nor the compute cost --- only the conditioning.  The Stage-2
 offload-pressure slowdown reproduces at the same windows in both runs,
 supporting that it is a property of the refinement pipeline rather than of
@@ -1292,24 +1374,28 @@ run content.
 
 Both runs used $\text{new\_lf}=16$ ($\approx5.3$\,s per chunk), within the
 21-frame safe limit established in earlier open-loop testing, streamed as ten
-chunks under the active guidance stack.  In neither run does boundary
-similarity degrade with chunk index --- in both it \emph{improves}: I2V's
-three strongest seams are its last three ($0.9622$--$0.9741$), and T2V climbs
-from an early floor of $0.383$ (chunk~3) to $0.92$--$0.97$ over the final
-three seams.  The corrected loop does not compound error over this horizon in
-either conditioning mode; where continuity is weak, it is weak \emph{early},
-while the content is still finding its configuration.  The two runs exercise
+chunks under the active guidance stack, with the overlap jitter
+(Section~\ref{sec:jitter}) varying the context length per chunk
+($4$--$8$\,lf).  In neither run does boundary
+similarity degrade with chunk index.  I2V \emph{improves} monotonically in
+the large: its floor is the first SLB-conditioned hand-off ($0.7900$,
+chunk~2) and its strongest seam is the last ($0.9814$).  T2V is flat
+first-to-last ($0.796\to0.790$) with the weakest seams mid-run ($0.469$ at
+chunk~5, $0.541$ at chunk~6) rather than late: where continuity is weak, it
+is weak as isolated seam variance --- chunk~5 is the first half-overlap
+($4$\,lf) window following a full-overlap chunk --- not as compounding drift.
+The two runs exercise
 opposite content regimes --- I2V a stable anchored scene (intra-chunk
-similarity plateauing at $0.93$--$0.94$), T2V sustained motion (intra near
-zero for most chunks) --- and the correction stack scales with the measured
-excess: near-idle on I2V (all band gains $\ge0.985$, detail-anchor gains
-within $\pm2$--$4\%$ of unity) versus working at its caps on T2V (band-2
-gains to $0.9446$, $g_{\rm hi}$ pinned at the $0.90$ floor for the last four
-chunks).
+similarity plateauing at $0.82$--$0.91$), T2V sustained motion (intra
+$0.02$--$0.71$ throughout) --- and the correction stack scales with the measured
+excess: near-idle on I2V (all band gains $\ge0.983$, detail-anchor gains
+within $+4\%$/$-3\%$ of unity) versus working measurably harder on T2V
+(band-2 gains to $0.9636$, $g_{\rm hi}$ down to $0.918$ against the raw
+high-band overshoot).
 
 \subsection{Identity Tracking and Boundary Self-Consistency}
 
-Chunk~2's identity\_sim (0.9245) equals its boundary\_sim exactly.  This is not a
+Chunk~2's identity\_sim (0.7900) equals its boundary\_sim exactly.  This is not a
 coincidence but a \emph{self-consistency check}: the anchor was seeded from
 chunk~1's last frame, and the SLB passes that same frame as the first latent
 frame of chunk~2's conditioning, so the anchor query and the boundary query
@@ -1319,8 +1405,8 @@ SLB operate on the same reference, and that the $\tau_c$ re-noising at the
 boundary introduces only minimal distributional shift.  For later chunks the
 bank holds multiple entries and the identity query selects a different anchor
 than the boundary, so the two metrics diverge, as expected (e.g.\ I2V chunk~6:
-identity 0.910 vs boundary 0.942).  The same self-consistency check holds in
-the unrelated T2V run at the same chunk (identity $0.7930=$ boundary $0.7930$,
+identity 0.878 vs boundary 0.940).  The same self-consistency check holds in
+the unrelated T2V run at the same chunk (identity $0.7957=$ boundary $0.7957$,
 Table~\ref{tab:t2v_s1_metrics}), confirming the mechanism is a property of the
 anchor/SLB bookkeeping rather than of any particular content.
 
@@ -1331,56 +1417,60 @@ in LTX-2.3's joint audio-video transformer, video and audio tokens share
 self-attention layers, so a strong single-frame visual prior could constrain
 audio generation implicitly through cross-modal attention --- for better
 (a coherence anchor) or worse (a repetition template).  The matched pair does
-not support the hypothesis in either direction.  Chunk-1 audio coherence is
-\emph{higher} without the guide image (T2V $0.729\to0.565$ vs.\ I2V
-$0.361\to0.391$), and the envelope-repetition signature is \emph{stronger}
-without it too (T2V sustains env\_corr $0.76$--$0.96$ from chunk~4; I2V peaks
-at $0.844$ and decays to $0.46$).  Both differences track the prompted
-\emph{sound content} --- T2V's loud continuous ambience (RMS reference
-$0.853$) naturally self-correlates within and across chunks, while I2V's
-quieter, more varied scene audio (RMS reference $0.532$) does not --- rather
-than the presence or absence of a visual prior.  The practical conclusion is
-negative but useful: visual conditioning is not a lever on streaming audio
-behaviour at this scale, and the audio failure modes of
-Section~\ref{sec:failures} must be addressed in the audio path itself.
+not support the hypothesis in either direction.  Chunk-1 audio coherence
+differs without any guide-image effect to attribute it to (T2V
+$0.745\to0.622$ vs.\ I2V $0.347\to0.523$), and with the envelope repetition
+now eliminated in \emph{both} modes by the jitter (env\_corr $\le-0.003$
+throughout in T2V, $\le0.190$ in I2V; Section~\ref{sec:jitter}), there is no
+repetition signature left for the guide image to modulate either.  The
+remaining audio differences track the prompted \emph{sound content} --- T2V's
+loud continuous ambience (RMS reference $0.8404$) naturally self-correlates
+within and across chunks, while I2V's quieter, more varied scene audio (RMS
+reference $0.5589$) does not --- rather than the presence or absence of a
+visual prior.  The practical conclusion is negative but useful: visual
+conditioning is not a lever on streaming audio behaviour at this scale, and
+the audio failure modes of Section~\ref{sec:failures} had to be --- and were
+--- addressed in the audio path itself.
 
 \subsection{Stability Margin}
 
 With $\rho_{\text{loop}} = 0.570$, the CLSS feedback loop provides a $\approx43\%$
 gain reduction per chunk before accounting for the model's open-loop gain $g$.
 In the I2V run the spectral-shrinkage correction was light throughout ---
-band-2/3 gains of $0.985$--$0.998$, a $\approx1$--$3\%$ high-frequency energy
-excess over the EMA reference.  Taking the typical $\approx1$--$3\%$ per-chunk
+band-2/3 gains of $0.983$--$0.998$, a $\approx1$--$2\%$ high-frequency energy
+excess over the EMA reference.  Taking the typical $\approx1$--$2\%$ per-chunk
 growth as a rough estimate of the open-loop gain in the spectral channel gives
 $g\approx1.02$ and $\rho_{\text{closed}} \approx 0.57\times1.02 \approx 0.58$,
 comfortably below the stability boundary of~1.  The T2V run runs hotter on
-this channel: band-2 gains fall to $0.945$--$0.975$ for most chunks, a
-$\approx4$--$6\%$ typical excess, giving $g\approx1.05$ and
-$\rho_{\text{closed}}\approx0.57\times1.05\approx0.60$ --- still comfortably
+this channel: band-2 gains fall to $0.964$--$0.985$ for most chunks, a
+$\approx2$--$4\%$ typical excess, giving $g\approx1.04$ and
+$\rho_{\text{closed}}\approx0.57\times1.04\approx0.59$ --- still comfortably
 stable, and close enough to the I2V estimate that the margin appears to be a
 property of the correction stack rather than of the conditioning mode.  The
-raw audio, however, shows a spectral drift the correction stack does not
-reach: the Stage-1 trend summary's \texttt{aud\_hf} statistic (a ratio of
-high-band to reference energy, not covered by the video-side machinery of
-Sections~\ref{sec:shrink} and~\ref{sec:detail}) grows in \emph{both} runs ---
-$0.42\to1.33$ in T2V (flagged as drift) and $0.87\to1.28$ in I2V --- with
-T2V's top frequency bins individually reaching $1.2$--$1.7\times$ the chunk-1
-reference by the final chunks.  This is audio-domain high-frequency energy
-growth with no video-channel analogue: the video hf channel is closed by the
-detail anchor, while no current correction targets the audio frequency
-distribution (the RMS anchor constrains only global loudness).
+raw audio spectral channel, not covered by the video-side machinery of
+Sections~\ref{sec:shrink} and~\ref{sec:detail}, is much improved over the
+pre-jitter runs but remains the least-corrected one: the Stage-1 trend
+summary's \texttt{aud\_hf} statistic (high-band audio energy relative to the
+chunk-1 reference) now \emph{declines} in T2V ($0.885\to0.772$; the residual
+energy excess concentrates in the lowest frequency bin instead, up to
+$1.62\times$ reference) and grows only mildly in I2V ($0.881\to1.047$, range
+$0.360$, with top bins individually reaching $\approx1.9\times$ reference at
+chunk~5) --- against the unbounded $0.42\to1.33$ (T2V) and $0.87\to1.28$
+(I2V) growth of the constant-overlap, SLB-off runs.  The RMS anchor
+constrains only global loudness; no current correction targets the audio
+frequency distribution (Section~\ref{sec:failures}).
 
 \subsection{Stage-2 Identity Metric Ambiguity}
 
 Stage~2 lacks an anchor bank; its identity\_sim reduces to comparing each window
 against the fixed first-window reference.  On a single moving scene this
 conflates ordinary content motion with drift: in I2V, where the reference is the
-guide-image region, windows 2--4 sit at a $0.42$--$0.56$ plateau, reflecting that
+guide-image region, windows 2--4 sit at a $0.51$--$0.53$ plateau, reflecting that
 the video has moved away from its opening frames, not instability.  In T2V,
 where window~1 has no anchor to begin with, the same comparison instead
-oscillates slightly negative ($-0.24$ to $-0.15$ across windows~2--4) ---
+oscillates around zero ($-0.36$ to $+0.06$ across windows~2--4) ---
 consistent with window~1 itself being internally uncorrelated
-(Table~\ref{tab:t2v_s2_metrics}, intra $-0.151$), so there is no stable
+(Table~\ref{tab:t2v_s2_metrics}, intra $-0.322$), so there is no stable
 reference for later windows to be ``close to'' or ``far from'' in the first
 place.  Adding a scene-aware anchor bank to Stage~2 would make this metric
 interpretable in either conditioning mode; as reported it should be read only as
@@ -1391,43 +1481,53 @@ interpretable in either conditioning mode; as reported it should be read only as
 
 Per-frame telemetry across extended runs --- including the ten-chunk,
 $\approx53$-second T2V and I2V runs reported above and earlier 13-lf and
-31-lf runs --- exposes two repetition mechanisms with distinct signatures,
-plus the Stage-2 audio design consequence.
+31-lf runs --- exposed two repetition mechanisms with distinct signatures.
+One is now diagnosed and solved; the other remains open.
 
-\paragraph{Loudness-envelope repetition is structural.}  Streaming Stage-1
-audio repeats a per-chunk loudness gesture: env\_corr crosses the $0.7$
-repetition flag in both reported runs (sustained $0.76$--$0.96$ in T2V; an
-arc to $0.844$ in I2V), it is the flagged drift of both trend summaries, and
-the repetition is audible in listening across every configuration tested.
-Every intervention available at the conditioning and guidance level was
-tested live against it, and \emph{all failed}: enabling the audio SLB
-(continuity carrier --- repetition unchanged, plus high-frequency runaway
-$1.02\to1.51$ as the buffer froze each chunk's loud tail forward); raising
-modality guidance to the reference value (repetition unchanged, plus audible
-hiss/drone as guidance energy rose); and perturbing the reference-audio
-window itself --- blending in noise, decaying its length over chunks,
-flattening its loudness envelope (repetition unchanged in each case, with
-the energy-injecting variants adding hiss).  The conclusion is that the
-mechanism is not in the conditioning at all: every chunk denoises against
-the same static text prompt, and the model re-renders its canonical loudness
-arc for that prompt each time --- continuity conditioning modulates the
-details, guidance modulates the energy, and neither can remove the arc.
-Consistent with this account, the signature's \emph{strength} tracks the
-prompted sound content (strongest for T2V's continuous ambience), not any
-conditioning knob.  The only structurally sound fix is generating or
-re-rendering the audio in a single non-chunked pass, which for joint AV
-denoising is blocked by the video context's token count at full length
-($\approx140$k tokens against a 42k budget); it remains future work.
+\paragraph{Loudness-envelope repetition: diagnosed and solved.}
+Earlier Stage-1 configurations repeated a per-chunk loudness gesture:
+env\_corr crossed the $0.7$ repetition flag in both conditioning modes
+(sustained $0.76$--$0.96$ in T2V; an arc to $0.844$ in I2V), it was the
+flagged drift of both trend summaries, and the repetition was audible in
+listening across every configuration tested.  Every intervention available at
+the conditioning and guidance level was tested live against it, and
+\emph{all failed}: enabling the audio SLB under a constant overlap
+(repetition unchanged, plus high-frequency runaway $1.02\to1.51$ as the
+buffer froze each chunk's loud tail forward); raising modality guidance to
+the reference value (repetition unchanged, plus audible hiss/drone as
+guidance energy rose); and perturbing the reference-audio window itself ---
+blending in noise, decaying its length over chunks, flattening its loudness
+envelope (repetition unchanged in each case, with the energy-injecting
+variants adding hiss).  Those failures are retained here as the diagnostic
+they turned out to be: if no change to conditioning \emph{values} or guidance
+\emph{weights} touches the artefact, the artefact must live in the one thing
+none of the interventions changed --- the \emph{shape} of the chunk window.
+With a constant overlap, every continuation chunk denoises an identical
+window and keeps the same phase of the model's window arc, so the arc is a
+fixed point of the chunk map (Section~\ref{sec:jitter}); the lock engages
+when the reference-audio window reaches full length at chunk~2--3, matching
+the user-audible ``audio repeats after chunk~1''.  The per-chunk overlap
+phase-jitter breaks the fixed point by construction, and with the lock gone
+the audio SLB is safe to restore as the content-continuity carrier.  In the
+reported runs the signature is absent: env\_corr never exceeds $-0.003$
+(T2V) or $0.190$ (I2V) at any hand-off, the peak-phase detector scatters
+($1/10$ mode coverage in both runs), boundary similarity holds a
+$0.85$--$0.92$ typical band with the SLB honored at $1.0000$ throughout, and
+the restored SLB shows no runaway (T2V \texttt{aud\_hf} $0.885\to0.772$).  A
+full-video single-pass audio re-render was also implemented and worked for
+short clips, but was rejected by design --- CLSS exists for arbitrary-length
+streaming, and a whole-video window defeats it
+(Section~\ref{sec:jitter}).
 
-\paragraph{Chunk-relative phase lock is broken; the gesture remains.}  An
+\paragraph{Chunk-relative phase lock, broken by construction.}  An
 earlier symptom of the same mechanism was a hard \emph{phase} lock: the audio
-energy peak at $94\%$ of the window for eight consecutive 13-lf chunks.  In
-the reported runs the phase-lock detector reads unlocked in both modes (peak
-mode covers only $3/10$ chunks within $\pm1$; I2V peaks scatter across frames
-3--126) --- the repeated gesture now drifts in phase across chunks rather
-than pinning to one relative frame.  Envelope correlation and the ear,
-however, still register the repetition: phase scatter is an improvement in
-the artefact's regularity, not its presence.
+energy peak at $94\%$ of the window for eight consecutive 13-lf chunks, and
+looser but persistent clustering under constant-overlap 16-lf runs.  With the
+jitter, no phase can recur: the detector reads fully scattered in both
+reported runs (audio peak mode covering $1/10$ chunks within $\pm1$; T2V
+peaks $[38,\,118,\,127,\,43,\,101,\,64,\,26,\,86,\,49,\,12]$, I2V peaks
+$[38,\,74,\,42,\,10,\,107,\,128,\,99,\,69,\,64,\,28]$), and env\_corr
+confirms the gesture itself is gone, not merely re-phased.
 
 \paragraph{A $\sim$4-second video layout oscillation.}  Coarse scene layout
 departs from the scene reference and partially returns with a $\approx4$\,s
@@ -1436,13 +1536,13 @@ chunks the dip lands at new-frame 5--7 in every chunk (appearing seam-locked),
 while at 31-lf ($9.9$\,s) chunks it recurs within the chunk at the same
 seconds-period.  Context strength and context length (overlap 3/5/8) were tested
 and neither removes it; the oscillation appears intrinsic to the model's trained
-temporal horizon.  In the reported 16-lf runs the layout-argmin detector reads
-unlocked in both modes (I2V mode~12 covering $5/10$ chunks within $\pm1$, T2V
-mode~2 covering $2/10$) --- at overlap~8 the strict per-chunk swing-and-return
-does not phase-lock to the seam grid, though global layout still wanders
-(largest per-frame layout drops of $-0.91$ in I2V and $-0.66$ in T2V,
-spread across the first half of each run rather than concentrated at one
-seam).
+temporal horizon.  In the reported 16-lf jittered runs the layout-argmin
+detector reads unlocked in both modes (T2V mode~4 covering $5/10$ chunks
+within $\pm1$, I2V mode~12 covering $4/10$) --- the strict per-chunk
+swing-and-return does not phase-lock to the seam grid, though global layout
+still wanders (largest per-frame layout drops of $-0.67$ in both runs, spread
+across the run rather than concentrated at one seam).  This failure mode
+remains open.
 
 \paragraph{Stage-2 audio is frozen by design.}  The freeze
 (Section~\ref{sec:twostage}) is the outcome of a measured escalation.  With
@@ -1459,12 +1559,15 @@ output are Stage~1's own chunk boundaries.  Rule: audio is either generated
 in one window or not re-rolled at all; any multi-window audio denoise
 re-seams the timeline it was meant to improve.
 
-\paragraph{Unbounded audio high-frequency growth.}  The trend-summary's
+\paragraph{Audio high-frequency growth, mostly closed.}  The trend-summary's
 \texttt{aud\_hf} statistic (high-band audio energy relative to the chunk-1
-reference) grows in both reported runs: $0.42\to1.33$ in T2V --- flagged as
-drift, with top frequency bins individually reaching $1.2$--$1.7\times$
-reference by the final chunks --- and $0.87\to1.28$ in I2V.  No current
-correction targets this channel: the video-side spectral shrinkage
+reference) grew unboundedly in the pre-jitter runs ($0.42\to1.33$ T2V,
+$0.87\to1.28$ I2V), and under a constant overlap the audio SLB made it worse
+($1.02\to1.51$).  In the reported jittered, SLB-on runs the channel is
+closed in T2V ($0.885\to0.772$) and reduced to a mild residual in I2V
+($0.881\to1.047$, range $0.360$; top bins to $\approx1.9\times$ reference at
+chunk~5).  No current correction targets this channel directly: the
+video-side spectral shrinkage
 (Section~\ref{sec:shrink}) and detail anchor (Section~\ref{sec:detail})
 operate on the video latent only, and the audio-side RMS anchor
 (Section~\ref{sec:audio}) constrains global loudness but not the frequency
@@ -1490,8 +1593,8 @@ anchor bank alone) or of the individual guidance terms (split CFG, modality,
 STG) has been performed.  The paper therefore cannot quantify the marginal
 contribution of each correction or guidance term, or demonstrate improvement
 over the open-loop baseline from the same metrics, and every single-run
-comparison in Section~\ref{sec:discussion} (e.g.\ the phase-lock/guide-image
-association) is a $n=1$-per-arm observation, not a statistically powered
+comparison in Section~\ref{sec:discussion} (e.g.\ the T2V/I2V
+content-regime contrast) is a $n=1$-per-arm observation, not a statistically powered
 result.  These comparisons are left to future work.
 
 \paragraph{Stability metrics vs.\ perceptual quality.}
@@ -1551,6 +1654,26 @@ audio-video model on a temporally-displaced keyframe without either corrupting
 audio (append) or morphing video (in-place replace) is an unsolved design
 problem; the $\sim$4-second video layout oscillation (Section~\ref{sec:failures})
 that motivated the attempt remains unaddressed.
+
+\paragraph{Phase-jitter caveats.}
+The overlap jitter (Section~\ref{sec:jitter}) is validated at the
+ten-chunk, $\approx53$-second horizon.  (a)~Half-overlap chunks carry only
+$4$\,lf of context: no video-continuity loss attributable to the shortened
+context is measured at this horizon (the T2V mid-run seam floor of $0.469$
+recovers on the following chunks and the trend is flat).  Longer horizons
+are simply not tested yet --- the limiting factor is the hardware budget
+available for this work (each $\approx53$-second clip costs
+$\approx$96--97\,min on a single 16\,GB GPU), not any known property of the
+method; longer runs are planned once better hardware is available.
+(b)~The jitter cycle is fixed
+($[\text{full},\,\text{half},\,\tfrac34]$), not content-adaptive; a schedule
+that reacts to measured envelope correlation is unexplored.  (c)~I2V audio
+high-frequency energy still grows mildly over the run ($0.881\to1.047$;
+Section~\ref{sec:failures}).  (d)~The I2V Stage-2 last-window
+\texttt{aud\_bnd} of $0.051$ is the Stage-1 audio's own weak transition at
+$t=40.0$\,s surfacing verbatim in the frozen passthrough --- a limitation of
+the Stage-1 audio at that span, not of the refinement pass, which never
+re-rolls audio.
 
 \paragraph{Hardware specificity.}
 The GGUF 4-bit quantisation and CPU block-streaming configuration was designed
@@ -1616,31 +1739,49 @@ EMA-tracked AdaIN, frequency-band soft shrinkage, a dynamic anchor bank, and a
 two-band spatial detail anchor --- achieve $\rho_{\text{loop}}=0.570$; driven
 by a reference-parity multi-modal guider (split per-modality CFG and STG) that
 correctly handles ComfyUI's packed audio-video latent representation, the
-pipeline held Stage~1 video boundary similarity at $0.92$--$0.97$ (I2V) across
-ten chunks of matched $\approx53$-second single-scene clips, held the
+pipeline held Stage~1 video boundary similarity on a rising trajectory
+($0.79\to0.98$ I2V) across ten chunks of matched $\approx53$-second
+single-scene clips, held the
 high-frequency energy share flat end-to-end in both conditioning modes, and
-held audio loudness to its chunk-1 reference against a raw $+72\%$ drift
-(T2V).  A two-stage pipeline (streaming Stage~1 + windowed distilled Stage~2
+held audio loudness to its chunk-1 reference within $\pm5\%$ throughout.  A
+two-stage pipeline (streaming Stage~1 + windowed distilled Stage~2
 with per-window detail anchoring and frozen audio) delivers a fully refined
-$2\times$-resolution audio-video output in $\approx98$ minutes per clip on a
-single 16\,GB GPU, essentially independent of conditioning mode.
+$2\times$-resolution audio-video output in $\approx96$--$97$ minutes per clip
+on a single 16\,GB GPU, essentially independent of conditioning mode.
+
+The headline audio result is that the per-chunk loudness-envelope repetition
+--- the metronome that earlier versions of this paper characterised as
+structural and immune to intervention --- is diagnosed and solved.  The
+diagnosis: the repeated gesture is a \emph{fixed point of the constant-shape
+chunk grid}, not a property of any conditioning value, which is why every
+conditioning- and guidance-level intervention failed against it.  The fix is
+chunk-native: a per-chunk overlap phase-jitter (cycling
+$[\text{full},\,\text{half},\,\tfrac34]$ of the configured overlap, so no two
+consecutive chunks share a window shape) breaks the fixed point by
+construction, and with the phase lock gone the audio SLB is restored as the
+content-continuity carrier and the RMS anchor keeps energy stability.  Against
+the matched pre-jitter runs, envelope correlation drops from a sustained
+$0.76$--$0.96$ to $\le0.19$ at every hand-off ($-0.51$--$0.19$ across both
+runs), audio boundary similarity rises
+from $0.07$--$0.53$ to a $0.85$--$0.92$ typical band with the SLB verified
+honored at every chunk, phase-lock detectors read fully scattered ($1/10$
+mode coverage in both runs), and audio high-frequency growth is closed in T2V
+($0.885\to0.772$) with a mild residual in I2V ($0.881\to1.047$) ---
+all while preserving arbitrary-length streaming, an unchanged output
+timeline, and exact audio/video proportionality.
 
 Running matched T2V and I2V generations under an identical seed and guidance
 stack, differing only in the presence of a guide image, shows that visual
 conditioning is not a lever on streaming audio behaviour: chunk-1 audio
-coherence, envelope repetition, and loudness stability all track the prompted
+coherence, envelope statistics, and loudness stability all track the prompted
 sound content rather than the guide image, while the guide image's clear
-effects are on the video side (a stable anchored scene with a $0.92$
-boundary floor versus T2V's early-run $0.38$--$0.73$ hand-offs under
-sustained motion).  Two failure modes persist across both runs at this
-horizon and are characterised rather than resolved: a per-chunk audio
-loudness gesture shown by live intervention to be structural to chunked
-autoregressive generation over a static prompt --- immune to continuity
-buffers, guidance weights, and every tested perturbation of the audio
-reference, and removable only by a non-chunked audio pass that current VRAM
-budgets do not admit --- and a chunk-length-invariant $\approx4$-second video
-layout oscillation that appears intrinsic to the model's trained temporal
-window.  All of this is visible in the pipeline's per-chunk telemetry ---
+effects are on the video side (a stable anchored scene with a rising
+$0.79\to0.98$ boundary trajectory versus T2V's variable $0.47$--$0.92$ seams
+under sustained motion).  One repetition mechanism remains open at this
+horizon: a chunk-length-invariant $\approx4$-second video layout oscillation
+that appears intrinsic to the model's trained temporal window (its detector
+reads unlocked in both reported runs, but global layout still wanders).  All
+of this is visible in the pipeline's per-chunk telemetry ---
 unconditional settings dumps, drift-event tables, and a phase-lock detector
 --- which is designed to localise such effects in wall-clock time and
 latent-frame position, and to make a silently inactive guidance path

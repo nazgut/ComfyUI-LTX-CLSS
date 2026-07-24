@@ -9,116 +9,116 @@
 \newlabel{sec:background}{{2}{3}{Background}{section.2}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.1}LTX-2.3 Architecture}{3}{subsection.2.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Streaming Latent Buffer (SLB)}{3}{subsection.2.2}\protected@file@percent }
-\newlabel{eq:renoise}{{1}{3}{Streaming Latent Buffer (SLB)}{equation.2.1}{}}
-\@writefile{toc}{\contentsline {paragraph}{Implementation note: masked timestep, not a one-shot draw.}{3}{section*.2}\protected@file@percent }
+\newlabel{eq:renoise}{{1}{4}{Streaming Latent Buffer (SLB)}{equation.2.1}{}}
+\@writefile{toc}{\contentsline {paragraph}{Implementation note: masked timestep, not a one-shot draw.}{4}{section*.2}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Exposure Bias in Streaming Diffusion}{4}{subsection.2.3}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {3}Closed-Loop Streaming Synthesis}{4}{section.3}\protected@file@percent }
 \newlabel{sec:clss}{{3}{4}{Closed-Loop Streaming Synthesis}{section.3}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Calibrated Context Re-Noising}{4}{subsection.3.1}\protected@file@percent }
-\newlabel{sec:renoise}{{3.1}{4}{Calibrated Context Re-Noising}{subsection.3.1}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}EMA-Tracked Per-Channel AdaIN}{4}{subsection.3.2}\protected@file@percent }
-\newlabel{sec:adain}{{3.2}{4}{EMA-Tracked Per-Channel AdaIN}{subsection.3.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Calibrated Context Re-Noising}{5}{subsection.3.1}\protected@file@percent }
+\newlabel{sec:renoise}{{3.1}{5}{Calibrated Context Re-Noising}{subsection.3.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}EMA-Tracked Per-Channel AdaIN}{5}{subsection.3.2}\protected@file@percent }
+\newlabel{sec:adain}{{3.2}{5}{EMA-Tracked Per-Channel AdaIN}{subsection.3.2}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Frequency-Band Soft Shrinkage}{5}{subsection.3.3}\protected@file@percent }
 \newlabel{sec:shrink}{{3.3}{5}{Frequency-Band Soft Shrinkage}{subsection.3.3}{}}
 \newlabel{eq:gain}{{6}{5}{Frequency-Band Soft Shrinkage}{equation.3.6}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Dynamic Anchor Bank}{5}{subsection.3.4}\protected@file@percent }
-\newlabel{sec:anchor}{{3.4}{5}{Dynamic Anchor Bank}{subsection.3.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Dynamic Anchor Bank}{6}{subsection.3.4}\protected@file@percent }
+\newlabel{sec:anchor}{{3.4}{6}{Dynamic Anchor Bank}{subsection.3.4}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.5}Two-Band Spatial Detail Anchoring}{6}{subsection.3.5}\protected@file@percent }
 \newlabel{sec:detail}{{3.5}{6}{Two-Band Spatial Detail Anchoring}{subsection.3.5}{}}
 \newlabel{eq:detail}{{7}{6}{Two-Band Spatial Detail Anchoring}{equation.3.7}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.6}Stability Analysis}{6}{subsection.3.6}\protected@file@percent }
-\newlabel{sec:stability}{{3.6}{6}{Stability Analysis}{subsection.3.6}{}}
-\newlabel{eq:rholoop}{{8}{6}{Stability Analysis}{equation.3.8}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.6}Stability Analysis}{7}{subsection.3.6}\protected@file@percent }
+\newlabel{sec:stability}{{3.6}{7}{Stability Analysis}{subsection.3.6}{}}
+\newlabel{eq:rholoop}{{8}{7}{Stability Analysis}{equation.3.8}{}}
 \@writefile{toc}{\contentsline {paragraph}{Why the two factors multiply.}{7}{section*.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Hyperparameter Choices.}{7}{section*.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Per-Chunk Gain Measurement.}{7}{section*.5}\protected@file@percent }
-\newlabel{eq:gslb}{{10}{7}{Per-Chunk Gain Measurement}{equation.3.10}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {4}Algorithm}{8}{section.4}\protected@file@percent }
-\newlabel{sec:algorithm}{{4}{8}{Algorithm}{section.4}{}}
-\@writefile{loa}{\contentsline {algorithm}{\numberline {1}{\ignorespaces CLSS per-chunk generation}}{8}{algorithm.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Hyperparameter Choices.}{8}{section*.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Per-Chunk Gain Measurement.}{8}{section*.5}\protected@file@percent }
+\newlabel{eq:gslb}{{10}{8}{Per-Chunk Gain Measurement}{equation.3.10}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Algorithm}{9}{section.4}\protected@file@percent }
+\newlabel{sec:algorithm}{{4}{9}{Algorithm}{section.4}{}}
+\@writefile{loa}{\contentsline {algorithm}{\numberline {1}{\ignorespaces CLSS per-chunk generation}}{9}{algorithm.1}\protected@file@percent }
 \providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
-\newlabel{alg:clss}{{1}{8}{CLSS per-chunk generation}{algorithm.1}{}}
+\newlabel{alg:clss}{{1}{9}{CLSS per-chunk generation}{algorithm.1}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {5}Implementation}{9}{section.5}\protected@file@percent }
 \newlabel{sec:impl}{{5}{9}{Implementation}{section.5}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Memory Budget for 16\,GB VRAM}{9}{subsection.5.1}\protected@file@percent }
 \newlabel{sec:memory}{{5.1}{9}{Memory Budget for 16\,GB VRAM}{subsection.5.1}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Two-Stage Pipeline}{9}{subsection.5.2}\protected@file@percent }
-\newlabel{sec:twostage}{{5.2}{9}{Two-Stage Pipeline}{subsection.5.2}{}}
-\@writefile{toc}{\contentsline {paragraph}{Stage 1 (Open-resolution streaming).}{9}{section*.6}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Stage 2 (Distilled-LoRA refinement).}{9}{section*.7}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Audio Streaming}{10}{subsection.5.3}\protected@file@percent }
-\newlabel{sec:audio}{{5.3}{10}{Audio Streaming}{subsection.5.3}{}}
-\@writefile{toc}{\contentsline {paragraph}{Continuity via reference audio, not a buffer.}{10}{section*.8}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Reference-exact RMS anchoring.}{11}{section*.9}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Boundary smoothing.}{11}{section*.10}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}ComfyUI Node Integration}{11}{subsection.5.4}\protected@file@percent }
-\newlabel{sec:nodes}{{5.4}{11}{ComfyUI Node Integration}{subsection.5.4}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.5}Multi-Modal Guidance and the Packed-Latent Pitfall}{12}{subsection.5.5}\protected@file@percent }
-\newlabel{sec:guider}{{5.5}{12}{Multi-Modal Guidance and the Packed-Latent Pitfall}{subsection.5.5}{}}
-\newlabel{eq:guider}{{13}{12}{Multi-Modal Guidance and the Packed-Latent Pitfall}{equation.5.13}{}}
-\@writefile{toc}{\contentsline {paragraph}{The packed-latent representation.}{12}{section*.11}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {6}Experiments}{13}{section.6}\protected@file@percent }
-\newlabel{sec:experiments}{{6}{13}{Experiments}{section.6}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Shared Configuration}{14}{subsection.6.1}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Shared configuration. Guidance values are those actually active during sampling (verified by the guider's per-chunk \texttt  {passes/step} and difference-norm telemetry, Section~\ref {sec:guider}). The Stage-2 geometry is selected automatically from the VRAM token budget.}}{14}{table.caption.12}\protected@file@percent }
-\newlabel{tab:config}{{1}{14}{Shared configuration. Guidance values are those actually active during sampling (verified by the guider's per-chunk \texttt {passes/step} and difference-norm telemetry, Section~\ref {sec:guider}). The Stage-2 geometry is selected automatically from the VRAM token budget}{table.caption.12}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Experiment 1: Text-to-Video (T2V)}{14}{subsection.6.2}\protected@file@percent }
-\newlabel{sec:exp_t2v}{{6.2}{14}{Experiment 1: Text-to-Video (T2V)}{subsection.6.2}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.1}Guidance Activity}{15}{subsubsection.6.2.1}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces T2V Stage 1 guidance difference norms (step 1 of each chunk). Modality guidance is disabled ($s_{\text  {mod}}=1$), so only the STG terms are reported.}}{15}{table.caption.13}\protected@file@percent }
-\newlabel{tab:t2v_guidance}{{2}{15}{T2V Stage 1 guidance difference norms (step 1 of each chunk). Modality guidance is disabled ($s_{\text {mod}}=1$), so only the STG terms are reported}{table.caption.13}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.2}Stage 1 Results}{15}{subsubsection.6.2.2}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces T2V Stage 1 per-chunk video metrics (10 chunks).}}{15}{table.caption.14}\protected@file@percent }
-\newlabel{tab:t2v_s1_metrics}{{3}{15}{T2V Stage 1 per-chunk video metrics (10 chunks)}{table.caption.14}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces T2V Stage 1 AdaIN corrections, band gains, and detail-anchor gains ($g_{\rm  lo}/g_{\rm  hi}$, Eq.~\eqref  {eq:detail}; $0.9000$ is the per-chunk floor cap).}}{16}{table.caption.15}\protected@file@percent }
-\newlabel{tab:t2v_s1_adain}{{4}{16}{T2V Stage 1 AdaIN corrections, band gains, and detail-anchor gains ($g_{\rm lo}/g_{\rm hi}$, Eq.~\eqref {eq:detail}; $0.9000$ is the per-chunk floor cap)}{table.caption.15}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.3}Stage 1 Audio}{17}{subsubsection.6.2.3}\protected@file@percent }
-\newlabel{sec:t2v_audio}{{6.2.3}{17}{Stage 1 Audio}{subsubsection.6.2.3}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces T2V Stage 1 per-chunk audio metrics. RMS raw is the chunk's pre-anchor loudness; RMS out is after the reference-exact anchor (chunk-1 onset-excluded reference $0.853$).}}{17}{table.caption.16}\protected@file@percent }
-\newlabel{tab:aud_t2v}{{5}{17}{T2V Stage 1 per-chunk audio metrics. RMS raw is the chunk's pre-anchor loudness; RMS out is after the reference-exact anchor (chunk-1 onset-excluded reference $0.853$)}{table.caption.16}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.4}Stage 2 Results}{18}{subsubsection.6.2.4}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces T2V Stage 2 per-window metrics (4 windows). $g_{\rm  lo}$/$g_{\rm  hi}$ are the per-window detail-anchor gains (reference: the window's own upscaled Stage-1 slice); Aud\_bnd is the frozen Stage-1 audio's own continuity at the window seam (Stage~2 never re-rolls audio).}}{18}{table.caption.17}\protected@file@percent }
-\newlabel{tab:t2v_s2_metrics}{{6}{18}{T2V Stage 2 per-window metrics (4 windows). $g_{\rm lo}$/$g_{\rm hi}$ are the per-window detail-anchor gains (reference: the window's own upscaled Stage-1 slice); Aud\_bnd is the frozen Stage-1 audio's own continuity at the window seam (Stage~2 never re-rolls audio)}{table.caption.17}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Experiment 2: Image-to-Video (I2V)}{18}{subsection.6.3}\protected@file@percent }
-\newlabel{sec:exp_i2v}{{6.3}{18}{Experiment 2: Image-to-Video (I2V)}{subsection.6.3}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.3.1}Guidance Activity}{18}{subsubsection.6.3.1}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces I2V Stage 1 guidance difference norms (step 1 of each chunk). STG measures the self-attention-skip perturbation; non-zero $\Rightarrow $ guidance active. Modality guidance is disabled ($s_{\text  {mod}}=1$).}}{19}{table.caption.18}\protected@file@percent }
-\newlabel{tab:i2v_guidance}{{7}{19}{I2V Stage 1 guidance difference norms (step 1 of each chunk). STG measures the self-attention-skip perturbation; non-zero $\Rightarrow $ guidance active. Modality guidance is disabled ($s_{\text {mod}}=1$)}{table.caption.18}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.3.2}Stage 1 Results}{19}{subsubsection.6.3.2}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces I2V Stage 1 per-chunk video metrics (10 chunks). Boundary\_sim compares the last overlap frame of the previous chunk against the first new frame; identity\_sim compares the chunk against its nearest anchor-bank entry.}}{19}{table.caption.19}\protected@file@percent }
-\newlabel{tab:i2v_s1_metrics}{{8}{19}{I2V Stage 1 per-chunk video metrics (10 chunks). Boundary\_sim compares the last overlap frame of the previous chunk against the first new frame; identity\_sim compares the chunk against its nearest anchor-bank entry}{table.caption.19}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces I2V Stage 1 AdaIN corrections, band gains, and detail-anchor gains (Band 0 is the DC band, $\gamma _0=0$, gain$\equiv 1$, omitted).}}{20}{table.caption.20}\protected@file@percent }
-\newlabel{tab:i2v_s1_adain}{{9}{20}{I2V Stage 1 AdaIN corrections, band gains, and detail-anchor gains (Band 0 is the DC band, $\gamma _0=0$, gain$\equiv 1$, omitted)}{table.caption.20}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.3.3}Stage 1 Audio}{21}{subsubsection.6.3.3}\protected@file@percent }
-\newlabel{sec:i2v_audio}{{6.3.3}{21}{Stage 1 Audio}{subsubsection.6.3.3}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {10}{\ignorespaces I2V Stage 1 per-chunk audio metrics. Within-chunk similarity is reported at the start and end of each chunk; env\_corr is the loudness-envelope correlation with the previous chunk ($>0.7$ flags a repeating gesture); RMS raw/out are pre-/post-anchor (chunk-1 onset-excluded reference $0.532$).}}{21}{table.caption.21}\protected@file@percent }
-\newlabel{tab:aud_i2v}{{10}{21}{I2V Stage 1 per-chunk audio metrics. Within-chunk similarity is reported at the start and end of each chunk; env\_corr is the loudness-envelope correlation with the previous chunk ($>0.7$ flags a repeating gesture); RMS raw/out are pre-/post-anchor (chunk-1 onset-excluded reference $0.532$)}{table.caption.21}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.3.4}Stage 2 Results}{21}{subsubsection.6.3.4}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {11}{\ignorespaces I2V Stage 2 per-window metrics (4 windows). Fid is video fidelity to the Stage-1 latent (first / last frame of the window); Aud\_bnd is the frozen Stage-1 audio's own continuity at the window seam; $g_{\rm  lo}$/$g_{\rm  hi}$ are the per-window detail-anchor gains.}}{22}{table.caption.22}\protected@file@percent }
-\newlabel{tab:i2v_s2_metrics}{{11}{22}{I2V Stage 2 per-window metrics (4 windows). Fid is video fidelity to the Stage-1 latent (first / last frame of the window); Aud\_bnd is the frozen Stage-1 audio's own continuity at the window seam; $g_{\rm lo}$/$g_{\rm hi}$ are the per-window detail-anchor gains}{table.caption.22}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.4}Computational Overhead}{22}{subsection.6.4}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {12}{\ignorespaces Wall-clock timing for the I2V run on a 16\,GB GPU (RTX-class, CPU block-streaming); the T2V run's per-chunk/per-window timings match to within a few percent throughout (see text) and are omitted for brevity. Stage~1 runs three transformer passes per step (split CFG, STG); Stage~2 runs a single video refinement pass per window (audio frozen).}}{22}{table.caption.23}\protected@file@percent }
-\newlabel{tab:timing}{{12}{22}{Wall-clock timing for the I2V run on a 16\,GB GPU (RTX-class, CPU block-streaming); the T2V run's per-chunk/per-window timings match to within a few percent throughout (see text) and are omitted for brevity. Stage~1 runs three transformer passes per step (split CFG, STG); Stage~2 runs a single video refinement pass per window (audio frozen)}{table.caption.23}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {7}Discussion}{23}{section.7}\protected@file@percent }
-\newlabel{sec:discussion}{{7}{23}{Discussion}{section.7}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {7.1}Effect of Chunk Length and Content Regime}{23}{subsection.7.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {7.2}Identity Tracking and Boundary Self-Consistency}{23}{subsection.7.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {7.3}Audio Coherence and the Role of Visual Context}{24}{subsection.7.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {7.4}Stability Margin}{24}{subsection.7.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {7.5}Stage-2 Identity Metric Ambiguity}{25}{subsection.7.5}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {7.6}Measured Failure Modes at Longer Horizons}{25}{subsection.7.6}\protected@file@percent }
-\newlabel{sec:failures}{{7.6}{25}{Measured Failure Modes at Longer Horizons}{subsection.7.6}{}}
-\@writefile{toc}{\contentsline {paragraph}{Loudness-envelope repetition is structural.}{25}{section*.24}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Chunk-relative phase lock is broken; the gesture remains.}{25}{section*.25}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{A $\sim $4-second video layout oscillation.}{26}{section*.26}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Stage-2 audio is frozen by design.}{26}{section*.27}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Unbounded audio high-frequency growth.}{26}{section*.28}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {8}Limitations}{27}{section.8}\protected@file@percent }
-\newlabel{sec:limitations}{{8}{27}{Limitations}{section.8}{}}
-\@writefile{toc}{\contentsline {paragraph}{Single hyperparameter configuration, single seed.}{27}{section*.29}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Stability metrics vs.\ perceptual quality.}{27}{section*.30}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Object-level identity is unobserved.}{27}{section*.31}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Stability model assumptions; $g_{\rm  SLB}$ not yet measured.}{27}{section*.32}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Two-Stage Pipeline}{10}{subsection.5.2}\protected@file@percent }
+\newlabel{sec:twostage}{{5.2}{10}{Two-Stage Pipeline}{subsection.5.2}{}}
+\@writefile{toc}{\contentsline {paragraph}{Stage 1 (Open-resolution streaming).}{10}{section*.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Stage 2 (Distilled-LoRA refinement).}{10}{section*.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Audio Streaming}{11}{subsection.5.3}\protected@file@percent }
+\newlabel{sec:audio}{{5.3}{11}{Audio Streaming}{subsection.5.3}{}}
+\@writefile{toc}{\contentsline {paragraph}{Continuity via the audio SLB, restored.}{11}{section*.8}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Reference-exact RMS anchoring.}{12}{section*.9}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Boundary smoothing.}{12}{section*.10}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}Per-Chunk Overlap Phase-Jitter}{12}{subsection.5.4}\protected@file@percent }
+\newlabel{sec:jitter}{{5.4}{12}{Per-Chunk Overlap Phase-Jitter}{subsection.5.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.5}ComfyUI Node Integration}{13}{subsection.5.5}\protected@file@percent }
+\newlabel{sec:nodes}{{5.5}{13}{ComfyUI Node Integration}{subsection.5.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.6}Multi-Modal Guidance and the Packed-Latent Pitfall}{14}{subsection.5.6}\protected@file@percent }
+\newlabel{sec:guider}{{5.6}{14}{Multi-Modal Guidance and the Packed-Latent Pitfall}{subsection.5.6}{}}
+\newlabel{eq:guider}{{13}{14}{Multi-Modal Guidance and the Packed-Latent Pitfall}{equation.5.13}{}}
+\@writefile{toc}{\contentsline {paragraph}{The packed-latent representation.}{14}{section*.11}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {6}Experiments}{14}{section.6}\protected@file@percent }
+\newlabel{sec:experiments}{{6}{14}{Experiments}{section.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Shared Configuration}{15}{subsection.6.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Shared configuration. Guidance values are those actually active during sampling (verified by the guider's per-chunk \texttt  {passes/step} and difference-norm telemetry, Section~\ref {sec:guider}). The Stage-2 geometry is selected automatically from the VRAM token budget.}}{15}{table.caption.12}\protected@file@percent }
+\newlabel{tab:config}{{1}{15}{Shared configuration. Guidance values are those actually active during sampling (verified by the guider's per-chunk \texttt {passes/step} and difference-norm telemetry, Section~\ref {sec:guider}). The Stage-2 geometry is selected automatically from the VRAM token budget}{table.caption.12}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Experiment 1: Text-to-Video (T2V)}{15}{subsection.6.2}\protected@file@percent }
+\newlabel{sec:exp_t2v}{{6.2}{15}{Experiment 1: Text-to-Video (T2V)}{subsection.6.2}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.1}Guidance Activity}{16}{subsubsection.6.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.2}Stage 1 Results}{16}{subsubsection.6.2.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces T2V Stage 1 per-chunk video metrics (10 chunks).}}{16}{table.caption.13}\protected@file@percent }
+\newlabel{tab:t2v_s1_metrics}{{2}{16}{T2V Stage 1 per-chunk video metrics (10 chunks)}{table.caption.13}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces T2V Stage 1 AdaIN corrections, band gains, and detail-anchor gains ($g_{\rm  lo}/g_{\rm  hi}$, Eq.~\eqref  {eq:detail}; $0.9000$ is the per-chunk floor cap).}}{17}{table.caption.14}\protected@file@percent }
+\newlabel{tab:t2v_s1_adain}{{3}{17}{T2V Stage 1 AdaIN corrections, band gains, and detail-anchor gains ($g_{\rm lo}/g_{\rm hi}$, Eq.~\eqref {eq:detail}; $0.9000$ is the per-chunk floor cap)}{table.caption.14}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.3}Stage 1 Audio}{18}{subsubsection.6.2.3}\protected@file@percent }
+\newlabel{sec:t2v_audio}{{6.2.3}{18}{Stage 1 Audio}{subsubsection.6.2.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces T2V Stage 1 per-chunk audio metrics. RMS raw is the chunk's pre-anchor loudness; RMS out is after the reference-exact anchor (chunk-1 onset-excluded reference $0.8404$). SLB hon.\ is the frozen audio-SLB verification ($1.0$ = the seeded tail survived denoising).}}{18}{table.caption.15}\protected@file@percent }
+\newlabel{tab:aud_t2v}{{4}{18}{T2V Stage 1 per-chunk audio metrics. RMS raw is the chunk's pre-anchor loudness; RMS out is after the reference-exact anchor (chunk-1 onset-excluded reference $0.8404$). SLB hon.\ is the frozen audio-SLB verification ($1.0$ = the seeded tail survived denoising)}{table.caption.15}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.2.4}Stage 2 Results}{19}{subsubsection.6.2.4}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces T2V Stage 2 per-window metrics (4 windows). $g_{\rm  lo}$/$g_{\rm  hi}$ are the per-window detail-anchor gains (reference: the window's own upscaled Stage-1 slice); Aud\_bnd is the frozen Stage-1 audio's own continuity at the window seam (Stage~2 never re-rolls audio).}}{19}{table.caption.16}\protected@file@percent }
+\newlabel{tab:t2v_s2_metrics}{{5}{19}{T2V Stage 2 per-window metrics (4 windows). $g_{\rm lo}$/$g_{\rm hi}$ are the per-window detail-anchor gains (reference: the window's own upscaled Stage-1 slice); Aud\_bnd is the frozen Stage-1 audio's own continuity at the window seam (Stage~2 never re-rolls audio)}{table.caption.16}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Experiment 2: Image-to-Video (I2V)}{19}{subsection.6.3}\protected@file@percent }
+\newlabel{sec:exp_i2v}{{6.3}{19}{Experiment 2: Image-to-Video (I2V)}{subsection.6.3}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.3.1}Guidance Activity}{19}{subsubsection.6.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.3.2}Stage 1 Results}{20}{subsubsection.6.3.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces I2V Stage 1 per-chunk video metrics (10 chunks). Boundary\_sim compares the last overlap frame of the previous chunk against the first new frame; identity\_sim compares the chunk against its nearest anchor-bank entry.}}{20}{table.caption.17}\protected@file@percent }
+\newlabel{tab:i2v_s1_metrics}{{6}{20}{I2V Stage 1 per-chunk video metrics (10 chunks). Boundary\_sim compares the last overlap frame of the previous chunk against the first new frame; identity\_sim compares the chunk against its nearest anchor-bank entry}{table.caption.17}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces I2V Stage 1 AdaIN corrections, band gains, and detail-anchor gains (Band 0 is the DC band, $\gamma _0=0$, gain$\equiv 1$, omitted).}}{21}{table.caption.18}\protected@file@percent }
+\newlabel{tab:i2v_s1_adain}{{7}{21}{I2V Stage 1 AdaIN corrections, band gains, and detail-anchor gains (Band 0 is the DC band, $\gamma _0=0$, gain$\equiv 1$, omitted)}{table.caption.18}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.3.3}Stage 1 Audio}{22}{subsubsection.6.3.3}\protected@file@percent }
+\newlabel{sec:i2v_audio}{{6.3.3}{22}{Stage 1 Audio}{subsubsection.6.3.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces I2V Stage 1 per-chunk audio metrics. Within-chunk similarity is reported at the start and end of each chunk; env\_corr is the loudness-envelope correlation with the previous chunk ($>0.7$ flags a repeating gesture); RMS raw/out are pre-/post-anchor (chunk-1 onset-excluded reference $0.5589$); SLB hon.\ is the frozen audio-SLB verification.}}{22}{table.caption.19}\protected@file@percent }
+\newlabel{tab:aud_i2v}{{8}{22}{I2V Stage 1 per-chunk audio metrics. Within-chunk similarity is reported at the start and end of each chunk; env\_corr is the loudness-envelope correlation with the previous chunk ($>0.7$ flags a repeating gesture); RMS raw/out are pre-/post-anchor (chunk-1 onset-excluded reference $0.5589$); SLB hon.\ is the frozen audio-SLB verification}{table.caption.19}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.3.4}Stage 2 Results}{22}{subsubsection.6.3.4}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces I2V Stage 2 per-window metrics (4 windows). Fid is video fidelity to the Stage-1 latent (first / last frame of the window); Aud\_bnd is the frozen Stage-1 audio's own continuity at the window seam; $g_{\rm  lo}$/$g_{\rm  hi}$ are the per-window detail-anchor gains.}}{23}{table.caption.20}\protected@file@percent }
+\newlabel{tab:i2v_s2_metrics}{{9}{23}{I2V Stage 2 per-window metrics (4 windows). Fid is video fidelity to the Stage-1 latent (first / last frame of the window); Aud\_bnd is the frozen Stage-1 audio's own continuity at the window seam; $g_{\rm lo}$/$g_{\rm hi}$ are the per-window detail-anchor gains}{table.caption.20}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.4}Computational Overhead}{23}{subsection.6.4}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {10}{\ignorespaces Wall-clock timing on a 16\,GB GPU (RTX-class, CPU block-streaming); s/it ranges span the matched T2V and I2V runs, which agree to within a few percent at every position. Stage~1 runs three transformer passes per step (split CFG, STG); Stage~2 runs a single video refinement pass per window (audio frozen). The Stage-1 window length varies per chunk because of the overlap jitter (Section~\ref {sec:jitter}), and the per-chunk cost tracks it.}}{23}{table.caption.21}\protected@file@percent }
+\newlabel{tab:timing}{{10}{23}{Wall-clock timing on a 16\,GB GPU (RTX-class, CPU block-streaming); s/it ranges span the matched T2V and I2V runs, which agree to within a few percent at every position. Stage~1 runs three transformer passes per step (split CFG, STG); Stage~2 runs a single video refinement pass per window (audio frozen). The Stage-1 window length varies per chunk because of the overlap jitter (Section~\ref {sec:jitter}), and the per-chunk cost tracks it}{table.caption.21}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {7}Discussion}{24}{section.7}\protected@file@percent }
+\newlabel{sec:discussion}{{7}{24}{Discussion}{section.7}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.1}Effect of Chunk Length and Content Regime}{24}{subsection.7.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.2}Identity Tracking and Boundary Self-Consistency}{24}{subsection.7.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.3}Audio Coherence and the Role of Visual Context}{25}{subsection.7.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.4}Stability Margin}{25}{subsection.7.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.5}Stage-2 Identity Metric Ambiguity}{26}{subsection.7.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.6}Measured Failure Modes at Longer Horizons}{26}{subsection.7.6}\protected@file@percent }
+\newlabel{sec:failures}{{7.6}{26}{Measured Failure Modes at Longer Horizons}{subsection.7.6}{}}
+\@writefile{toc}{\contentsline {paragraph}{Loudness-envelope repetition: diagnosed and solved.}{26}{section*.22}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Chunk-relative phase lock, broken by construction.}{27}{section*.23}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{A $\sim $4-second video layout oscillation.}{27}{section*.24}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Stage-2 audio is frozen by design.}{27}{section*.25}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Audio high-frequency growth, mostly closed.}{28}{section*.26}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {8}Limitations}{28}{section.8}\protected@file@percent }
+\newlabel{sec:limitations}{{8}{28}{Limitations}{section.8}{}}
+\@writefile{toc}{\contentsline {paragraph}{Single hyperparameter configuration, single seed.}{28}{section*.27}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Stability metrics vs.\ perceptual quality.}{28}{section*.28}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Object-level identity is unobserved.}{28}{section*.29}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Stability model assumptions; $g_{\rm  SLB}$ not yet measured.}{29}{section*.30}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{No working anchor-bank conditioning.}{29}{section*.31}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Phase-jitter caveats.}{29}{section*.32}\protected@file@percent }
 \citation{henschel2024streamingt2v}
 \citation{kim2024fifo}
 \citation{wang2023gen}
@@ -127,19 +127,18 @@
 \citation{bengio2015scheduled}
 \citation{ning2023elucidating}
 \citation{salimans2022progressive}
-\@writefile{toc}{\contentsline {paragraph}{No working anchor-bank conditioning.}{28}{section*.33}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Hardware specificity.}{28}{section*.34}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {9}Related Work}{28}{section.9}\protected@file@percent }
-\newlabel{sec:related}{{9}{28}{Related Work}{section.9}{}}
-\@writefile{toc}{\contentsline {paragraph}{Long video generation.}{28}{section*.35}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Exposure bias in diffusion.}{28}{section*.36}\protected@file@percent }
 \citation{huang2017arbitrary}
 \citation{yang2024fresco}
 \citation{ceylan2023pix2video}
-\@writefile{toc}{\contentsline {paragraph}{Statistical normalisation for consistency.}{29}{section*.37}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Frequency-domain video editing.}{29}{section*.38}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {10}Conclusion}{29}{section.10}\protected@file@percent }
-\newlabel{sec:conclusion}{{10}{29}{Conclusion}{section.10}{}}
+\@writefile{toc}{\contentsline {paragraph}{Hardware specificity.}{30}{section*.33}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {9}Related Work}{30}{section.9}\protected@file@percent }
+\newlabel{sec:related}{{9}{30}{Related Work}{section.9}{}}
+\@writefile{toc}{\contentsline {paragraph}{Long video generation.}{30}{section*.34}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Exposure bias in diffusion.}{30}{section*.35}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Statistical normalisation for consistency.}{30}{section*.36}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Frequency-domain video editing.}{31}{section*.37}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {10}Conclusion}{31}{section.10}\protected@file@percent }
+\newlabel{sec:conclusion}{{10}{31}{Conclusion}{section.10}{}}
 \bibstyle{plain}
 \bibcite{qiu2024freenoise}{1}
 \bibcite{li2024vidtome}{2}
@@ -152,4 +151,4 @@
 \bibcite{huang2017arbitrary}{9}
 \bibcite{yang2024fresco}{10}
 \bibcite{ceylan2023pix2video}{11}
-\gdef \@abspage@last{31}
+\gdef \@abspage@last{33}
