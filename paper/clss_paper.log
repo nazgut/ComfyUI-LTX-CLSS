@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2025.11.28)  24 JUL 2026 20:54
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2025.11.28)  7 AUG 2026 09:17
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -540,26 +540,26 @@ LaTeX Font Info:    Trying to load font information for U+msb on input line 44.
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 ) [1
 
-{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}] [2]
-Overfull \hbox (19.69493pt too wide) in paragraph at lines 147--151
+{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}]
+Overfull \hbox (19.69493pt too wide) in paragraph at lines 124--128
 []\OT1/cmr/m/n/12 A reference-parity multi-modal guider for Com-fyUI (split per
 -modality CFG, modality-
  []
 
 
-Overfull \hbox (1.89917pt too wide) in paragraph at lines 151--156
+Overfull \hbox (1.89917pt too wide) in paragraph at lines 128--133
 []\OT1/cmr/m/n/12 ComfyUI cus-tom nodes im-ple-ment-ing the full pipeline with 
 seeded, bit-reproducible
  []
 
-[3]
-Overfull \hbox (33.7501pt too wide) in paragraph at lines 192--197
+[2]
+Overfull \hbox (33.7501pt too wide) in paragraph at lines 166--171
 \OT1/cmr/m/n/12 chunks en-tirely. In LTX's frame-work this is im-ple-mented as 
 \OT1/cmtt/m/n/12 VideoConditionByLatentIndex
  []
 
-[4]
-Overfull \hbox (12.17514pt too wide) in paragraph at lines 310--314
+[3] [4]
+Overfull \hbox (12.17514pt too wide) in paragraph at lines 284--288
 \OML/cmm/m/it/12 ^^M[] \OT1/cmr/m/n/12 = 0$ (the DC band) are never at-ten-u-at
 ed. De-fault ex-po-nents: $[] = (0\OML/cmm/m/it/12 :\OT1/cmr/m/n/12 0\OML/cmm/m
 /it/12 ;  \OT1/cmr/m/n/12 0\OML/cmm/m/it/12 :\OT1/cmr/m/n/12 05\OML/cmm/m/it/12
@@ -567,100 +567,94 @@ ed. De-fault ex-po-nents: $[] = (0\OML/cmm/m/it/12 :\OT1/cmr/m/n/12 0\OML/cmm/m
 1/cmr/m/n/12 0\OML/cmm/m/it/12 :\OT1/cmr/m/n/12 3)$,
  []
 
-[5]
-Overfull \hbox (53.16716pt too wide) in paragraph at lines 333--338
+
+Overfull \hbox (53.16716pt too wide) in paragraph at lines 307--312
 []\OT1/cmr/m/n/12 Anchors are re-trieved via co-sine sim-i-lar-ity and in-jecte
 d as \OT1/cmtt/m/n/12 VideoConditionByKeyframeIndex
  []
 
-[6] [7]
+[5] [6] [7]
 Package hyperref Info: bookmark level for unknown algorithm defaults to 0 on in
-put line 489.
- [8]
+put line 460.
+
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `\leavevmode@ifvmode' on input line 513.
+(hyperref)                removing `\leavevmode@ifvmode' on input line 484.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
 (hyperref)                \kern 1.95872pt
-(hyperref)                removed on input line 513.
+(hyperref)                removed on input line 484.
 
-
-Overfull \hbox (36.617pt too wide) in paragraph at lines 527--530
+[8]
+Overfull \hbox (36.617pt too wide) in paragraph at lines 498--501
 []\OT1/cmr/bx/n/12 Temporal chunk-ing (CLSS)\OT1/cmr/m/n/12 : la-tent mem-ory i
 s $\OML/cmm/m/it/12 O\OT1/cmr/m/n/12 ([])$ in-stead of $\OML/cmm/m/it/12 O\OT1/
 cmr/m/n/12 ([])$.
  []
 
-[9] [10] [11] [12]
-Overfull \hbox (7.06065pt too wide) in paragraph at lines 749--754
+[9] [10]
+Overfull \hbox (8.18137pt too wide) in paragraph at lines 654--660
+\OT1/cmr/m/n/12 val-i-dated in-ter-nals are fixed. Two di-ag-nos-tic levers are
+ also ex-posed: \OT1/cmtt/m/n/12 shrinkage=off
+ []
+
+
+Overfull \hbox (33.25914pt too wide) in paragraph at lines 654--660
+\OT1/cmr/m/n/12 ze-roes $[]$ (the spectral-shrinkage ab-la-tion arm), and \OT1/
+cmtt/m/n/12 measure[]g \OT1/cmr/m/n/12 (with \OT1/cmtt/m/n/12 measure[]g[]epsil
+on\OT1/cmr/m/n/12 )
+ []
+
+[11]
+Overfull \hbox (7.06065pt too wide) in paragraph at lines 660--665
 []\OT1/cmr/bx/n/12 CLSSScenePrompts\OT1/cmr/m/n/12 : multi-scene text in-put vi
 a \OT1/cmtt/m/n/12 --- \OT1/cmr/m/n/12 de-lim-iters; Gemma-enhanced
  []
 
-[13]
-Overfull \hbox (8.8536pt too wide) in paragraph at lines 805--826
+
+Overfull \hbox (8.8536pt too wide) in paragraph at lines 721--742
  []\OT1/cmr/bx/n/12 The packed-latent rep-re-sen-ta-tion.[] \OT1/cmr/m/n/12 Com
 -fyUI's \OT1/cmtt/m/n/12 CFGGuider.sample() \OT1/cmr/m/n/12 packs nested
  []
 
 
-Overfull \hbox (5.43427pt too wide) in paragraph at lines 805--826
+Overfull \hbox (5.43427pt too wide) in paragraph at lines 721--742
 \OT1/cmr/m/n/12 packs only af-ter. A guider that tries to de-tect the audio-vid
 eo case with \OT1/cmtt/m/n/12 isinstance(x,
  []
 
-[14]
-Overfull \hbox (2.72809pt too wide) in paragraph at lines 851--882
+[12]
+Overfull \hbox (222.54344pt too wide) in paragraph at lines 766--799
  [][] 
  []
 
-[15]
-Overfull \hbox (0.71552pt too wide) in paragraph at lines 902--912
-\OT1/cmr/m/n/12 Every chunk re-ports \OT1/cmtt/m/n/12 [CLSS AVGuiderV2] active:
- video[]cfg=4.0 audio[]cfg=7.0
- []
-
-[16]
-Overfull \hbox (61.90138pt too wide) in paragraph at lines 996--1013
-[]\OT1/cmr/m/n/12 The an-chor bank grows to six en-tries over the run (bank[]fr
-ame[]ids $= [15\OML/cmm/m/it/12 ;  \OT1/cmr/m/n/12 47\OML/cmm/m/it/12 ;  \OT1/c
-mr/m/n/12 63\OML/cmm/m/it/12 ;  \OT1/cmr/m/n/12 95\OML/cmm/m/it/12 ;  \OT1/cmr/
-m/n/12 111\OML/cmm/m/it/12 ;  \OT1/cmr/m/n/12 159]$).
+[13] [14] [15] [16] [17] [18] [19] [20] [21]
+Overfull \hbox (8.61723pt too wide) in paragraph at lines 1215--1219
+\OT1/cmr/m/n/12 (bank[]frame[]ids $= [15\OML/cmm/m/it/12 ;  \OT1/cmr/m/n/12 47\
+OML/cmm/m/it/12 ;  \OT1/cmr/m/n/12 63\OML/cmm/m/it/12 ;  \OT1/cmr/m/n/12 111\OM
+L/cmm/m/it/12 ;  \OT1/cmr/m/n/12 159]$) --- the same forced-insertion-plus-one-
+organic-
  []
 
 
-Overfull \hbox (6.14436pt too wide) in paragraph at lines 996--1013
-\OT1/cmr/m/n/12 With $[] = 16$, chunk $\OML/cmm/m/it/12 k$\OT1/cmr/m/n/12 's la
-st frame lands at ab-so-lute in-dex $16\OML/cmm/m/it/12 k \OMS/cmsy/m/n/12 ^^@ 
-\OT1/cmr/m/n/12 1$: $15\OML/cmm/m/it/12 ; \OT1/cmr/m/n/12 31\OML/cmm/m/it/12 ; 
-\OT1/cmr/m/n/12 47\OML/cmm/m/it/12 ; \OT1/cmr/m/n/12 63\OML/cmm/m/it/12 ; [] $
+Overfull \hbox (10.24751pt too wide) in paragraph at lines 1264--1287
+\OT1/cmr/m/n/12 energy-peak po-si-tions no longer phase-lock (frames $38\OML/cm
+m/m/it/12 ; \OT1/cmr/m/n/12 27\OML/cmm/m/it/12 ; \OT1/cmr/m/n/12 84\OML/cmm/m/i
+t/12 ; \OT1/cmr/m/n/12 18\OML/cmm/m/it/12 ; \OT1/cmr/m/n/12 81\OML/cmm/m/it/12 
+; \OT1/cmr/m/n/12 78\OML/cmm/m/it/12 ; \OT1/cmr/m/n/12 129\OML/cmm/m/it/12 ; \O
+T1/cmr/m/n/12 129\OML/cmm/m/it/12 ; \OT1/cmr/m/n/12 130\OML/cmm/m/it/12 ; \OT1/
+cmr/m/n/12 78$;
  []
 
-[17]
-Overfull \hbox (15.78287pt too wide) in paragraph at lines 1024--1040
- [][] 
+[22] [23] [24] [25] [26] [27] [28]
+Overfull \hbox (1.28616pt too wide) in paragraph at lines 1642--1659
+ []\OT1/cmr/bx/n/12 Audio high-frequency growth.[] \OT1/cmr/m/n/12 The trend-su
+mmary's \OT1/cmtt/m/n/12 aud[]hf \OT1/cmr/m/n/12 statis-tic (high-band
  []
 
-[18]
-Overfull \hbox (0.71552pt too wide) in paragraph at lines 1115--1123
-\OT1/cmr/m/n/12 Every chunk re-ports \OT1/cmtt/m/n/12 [CLSS AVGuiderV2] active:
- video[]cfg=4.0 audio[]cfg=7.0
- []
-
-[19] [20]
-Overfull \hbox (15.78287pt too wide) in paragraph at lines 1232--1248
- [][] 
- []
-
-[21] [22]
-Overfull \hbox (11.81769pt too wide) in paragraph at lines 1326--1339
- [][] 
- []
-
-[23] [24] [25] [26] [27] [28] [29]
-Overfull \hbox (39.91507pt too wide) in paragraph at lines 1714--1723
+[29]
+Overfull \hbox (39.91507pt too wide) in paragraph at lines 1721--1730
  []\OT1/cmr/bx/n/12 Statistical nor-mal-i-sa-tion for con-sis-tency.[] \OT1/cmr
 /m/n/12 Adap-tive In-stance Nor-mal-i-sa-tion (AdaIN) [[]]
  []
@@ -671,16 +665,16 @@ LaTeX2e <2023-11-01> patch level 1
 L3 programming layer <2024-01-22>
  ***********
 Package rerunfilecheck Info: File `clss_paper.out' has not changed.
-(rerunfilecheck)             Checksum: 0D5F3C18DAF34D2D9B2ED7233B305E85;7647.
+(rerunfilecheck)             Checksum: CF32DD82709563671D6D5D297F2B060A;7497.
  ) 
 Here is how much of TeX's memory you used:
- 14706 strings out of 476106
+ 14704 strings out of 476106
  227613 string characters out of 5793932
- 1942975 words of memory out of 5000000
+ 1943975 words of memory out of 5000000
  36384 multiletter control sequences out of 15000+600000
- 572656 words of font info for 90 fonts, out of 8000000 for 9000
+ 572310 words of font info for 89 fonts, out of 8000000 for 9000
  59 hyphenation exceptions out of 8191
- 75i,14n,79p,599b,617s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 75i,14n,79p,772b,617s stack positions out of 10000i,1000n,20000p,200000b,200000s
  </home/n/.texlive2023/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm1200.600pk><
 /usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb></usr/s
 hare/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb></usr/share/t
@@ -695,13 +689,12 @@ s/cm/cmr12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cm
 r6.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb><
 /usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/s
 hare/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/share/te
-xlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmti10.pfb></usr/share/texlive/
-texmf-dist/fonts/type1/public/amsfonts/cm/cmti12.pfb></usr/share/texlive/texmf-
-dist/fonts/type1/public/amsfonts/cm/cmtt12.pfb>
-Output written on clss_paper.pdf (33 pages, 350739 bytes).
+xlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmti12.pfb></usr/share/texlive/
+texmf-dist/fonts/type1/public/amsfonts/cm/cmtt12.pfb>
+Output written on clss_paper.pdf (33 pages, 334449 bytes).
 PDF statistics:
- 649 PDF objects out of 1000 (max. 8388607)
- 570 compressed objects within 6 object streams
- 156 named destinations out of 1000 (max. 500000)
- 345 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 631 PDF objects out of 1000 (max. 8388607)
+ 553 compressed objects within 6 object streams
+ 155 named destinations out of 1000 (max. 500000)
+ 337 words of extra memory for PDF output out of 10000 (max. 10000000)
 
