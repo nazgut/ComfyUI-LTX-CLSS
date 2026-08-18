@@ -12,10 +12,11 @@ audio-video generation on top of LTX-2. It is loaded by a ComfyUI install (this 
 exports `NODE_CLASS_MAPPINGS` / `NODE_DISPLAY_NAME_MAPPINGS` from [nodes.py](nodes.py). All node
 code is in that single ~2700-line file.
 
-### `Ltx-2-CLSS/` is a separate nested git repo, not a submodule
+### `Ltx-2-CLSS/` is a git submodule with its own history
 
-It is an **embedded git repository** (gitlink, no `.gitmodules`) with its own remote
-(`github.com:nazgut/Ltx-2-CLSS.git`) — a fork of Lightricks' LTX-2. The outer repo records only its
+It is a registered **submodule** (see `.gitmodules`, pointing at
+`github.com:nazgut/Ltx-2-CLSS.git`) — a fork of Lightricks' LTX-2. Clone with
+`--recurse-submodules` (or `git submodule update --init`). The outer repo records only its
 commit pointer (that is what a `m Ltx-2-CLSS` in `git status` means). Edits inside `Ltx-2-CLSS/` are
 committed **in that inner repo**, separately from the outer node repo. The CLSS algorithm itself
 lives there at
@@ -40,10 +41,47 @@ Two-stage pipeline: Stage 1 (`CLSSStreamingSampler`) → `LTXVLatentUpsampler` (
 `CLSSStage2` (chunked distilled-LoRA refinement, same SLB continuity mechanism). See
 [workflow/i2v_LTX_CLSS.json](workflow/i2v_LTX_CLSS.json) for the canonical wiring.
 
-The 6 nodes (`NODE_CLASS_MAPPINGS`): `CLSSConfig`, `CLSSScenePrompts`, `CLSSStreamingSampler`,
+The nodes (`NODE_CLASS_MAPPINGS`): `CLSSConfig`, `CLSSScenePrompts`, `CLSSStreamingSampler`,
 `CLSSStage2`, `CLSSAVGuider` (split-CFG patch over an existing guider), `CLSSAVGuiderV2`
-(all-in-one Stage-1 guider). When the guider's positive has N scene entries, the sampler
-auto-unpacks one scene per chunk proportionally across `num_chunks`.
+(all-in-one Stage-1 guider). When the guider's
+positive has N scene entries,
+the sampler auto-unpacks one scene per chunk proportionally across `num_chunks`.
+
+### Audio latent scale (2026-08-09)
+
+The audio VAE's normalizer is calibrated so **real audio sits at unit variance** — measured over
+four real tracks: overall latent std 0.98-1.26, per-freq-bin std flat at 1.00. Generated audio
+does not get there, and the shortfall tracks how bad it sounds: the strongest run on these
+measures (a ~26 s per-chunk run) reached std 0.84 / 6.1 kHz bandwidth / stereo, while a 104 s
+single-window soundtrack draft came in at std 0.48 / 3.1 kHz / L/R correlation 1.00000 (literally
+mono). Half-scale in a log-mel space = quiet (−31.6 dBFS vs −21…−16 for real tracks) and
+low-passed well under the 8 kHz mel ceiling. Do **not** try to fix this by scaling the latent's
+variance up — measured, that raises log-mel contrast past real music's while crushing the
+loudness envelope, and it is what produced the deleted node below. **The VAE is innocent** — real music round-trips through it with bandwidth and stereo
+intact; don't go looking for a decode or sample-rate bug.
+
+**The wall is on the per-chunk WINDOW, not on output length.** `CLSSStreamingSampler` chunks
+audio exactly as it chunks video, so long audio just needs `overlap_af + new_af` < 20 s. At 24 fps
+that is 409 px per chunk (17.1 s new + 2.7 s overlap = 20.0 s); 441 px is already over. The
+sampler now prints an `audio window:` line every run and warns when it exceeds the wall. A
+6 x 17.3 s chained run measured latent std 0.63 and was judged ok by ear (2026-08-10).
+
+This retires the soundtrack draft: its only justification was that one pass saw the whole
+timeline, so once it has to be chunked it duplicates the main sampler.  The two canonical
+workflows in `workflow/` (i2v + t2v) are the single-pass per-chunk configuration.
+
+Measure any take with `python simulations/audio_latent_probe.py FILE --reference` (audio VAE only,
+CPU, runs while ComfyUI holds the GPU). **Gate on dynR, not bandwidth** — an ear-validated A/B
+(2026-08-10) had the better-sounding take at LOWER ro99 (3023 vs 3516); the only separating
+metric was the 0.25 s envelope range, 9.8 dB vs 3.3 dB. The drone is the flat envelope.
+The probe runs in ~2 min with window length as the knob.
+
+**Do not try to fix this after the fact.** A `CLSSAudioRestore` node that shifted the audio
+latent's per-(channel,bin) mean toward real-music statistics was built and DELETED (2026-08-10):
+it improved every metric being watched (ro99 3141->4477 Hz, +4 dB level) and the live run was
+noise — the "recovered bandwidth" was a broadband noise bed (>4 kHz energy 0.22%->1.31%) and the
+loudness envelope collapsed to 2.4 dB. Textbook case of the rule below: a latent metric moving
+the right way is not a quality win.
 
 ### CLSS in one paragraph
 

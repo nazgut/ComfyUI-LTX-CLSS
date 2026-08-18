@@ -1,5 +1,5 @@
 # Fdb version 4
-["pdflatex"] 1786087068.38978 "clss_paper.tex" "clss_paper.pdf" "clss_paper" 1786087068.84799 0
+["pdflatex"] 1786986038.07579 "clss_paper.tex" "clss_paper.pdf" "clss_paper" 1786986040.34716 0
   "/etc/texmf/web2c/texmf.cnf" 1731105633.92131 475 c0e671620eb5563b2130f56340a5fde8 ""
   "/home/n/.texlive2023/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm1200.600pk" 1782496210.01047 14040 a5803eee545b079cce400d8c667e8a71 ""
   "/usr/share/texlive/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
@@ -124,9 +124,9 @@
   "/usr/share/texmf/web2c/texmf.cnf" 1707919699 40399 f2c302f7d2af602abb742093540a5834 ""
   "/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map" 1764332310.49045 165012 f177baa1c39a3ebd62c3096a43521a0d ""
   "/var/lib/texmf/web2c/pdftex/pdflatex.fmt" 1764333471 6831197 485aa925404972fac7b01af3a29deee3 ""
-  "clss_paper.aux" 1786087068.774 21515 0ca6fadddba3627e21f70558a1e906e4 "pdflatex"
-  "clss_paper.out" 1786087068.775 7497 cf32dd82709563671d6d5d297f2b060a "pdflatex"
-  "clss_paper.tex" 1786087044.70199 102536 484327c4a75fd6dc78ce6f20e5905b0b ""
+  "clss_paper.aux" 1786986039.95017 13532 b1690e781a51d96a02930f3f04bd1f3f "pdflatex"
+  "clss_paper.out" 1786986039.95717 7091 4929b5407bcbf39a48f3f0fd37312c5d "pdflatex"
+  "clss_paper.tex" 1786986029.39402 73651 bcb7e7cc3f73c6dfde2543ba9f35bbb9 ""
   (generated)
   "clss_paper.aux"
   "clss_paper.log"
